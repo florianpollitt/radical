@@ -7,3 +7,5 @@ inspired by:
 * https://github.com/digama0/cadical
 * https://www.cs.cmu.edu/~mheule/publications/FRAT-TACAS.pdf
 
+## Reimplement reimply from intelsat
+* paper?
