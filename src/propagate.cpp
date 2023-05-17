@@ -346,34 +346,34 @@ bool Internal::propagate () {
             // first does not really seem to be necessary for correctness,
             // and further does not improve running time either.
             //
-            if (opts.chrono > 1) {
+            if (opts.chrono > 1) {  // ... always do some variant ...
 
               const int other_level = var (other).level;
-
+  
               if (other_level > var (lit).level) {
-
+  
                 // The assignment level of the new unit 'other' is larger
                 // than the assignment level of 'lit'.  Thus we should find
                 // another literal in the clause at that higher assignment
                 // level and watch that instead of 'lit'.
-
+  
                 assert (size > 2);
-
+  
                 int pos, s = 0;
-
+  
                 for (pos = 2; pos < size; pos++)
                   if (var (s = lits[pos]).level == other_level)
                     break;
-
+  
                 assert (s);
                 assert (pos < size);
-
+  
                 LOG (w.clause, "unwatch %d in", lit);
                 lits[pos] = lit;
                 lits[0] = other;
                 lits[1] = s;
                 watch_literal (s, other, w.clause);
-
+  
                 j--;  // Drop this watch from the watch list of 'lit'.
               }
             }
@@ -428,6 +428,7 @@ bool Internal::propagate () {
 
   STOP (propagate);
 
+  test_watch_invariant ();
   return !conflict;
 }
 

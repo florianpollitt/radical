@@ -470,6 +470,12 @@ struct Internal {
     LOG (c, "watch %d blit %d in", lit, blit);
   }
 
+  // for debugging...
+  // invariant from intel sat (see watch.hpp)
+  // assert (val (lit) >= 0 ||
+  //        (val (blit) > 0 && var (blit).level <= var (lit).level));
+  void test_watch_invariant ();
+
   // Add two watches to a clause.  This is used initially during allocation
   // of a clause and during connecting back all watches after preprocessing.
   //

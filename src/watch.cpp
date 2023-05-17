@@ -95,4 +95,16 @@ void Internal::sort_watches () {
   }
 }
 
+void Internal::test_watch_invariant () {
+  for (auto lit : lits) {
+    Watches & ws = watches (lit);
+    if (var (lit).trail >= propagated - 1) continue; // last literal might not be propagated to completion
+    for (auto w : ws) {
+      int blit = w.blit;
+      assert (val (lit) >= 0 ||
+             (val (blit) > 0 && var (blit).level <= var (lit).level));
+    }
+  }
+}
+
 }
