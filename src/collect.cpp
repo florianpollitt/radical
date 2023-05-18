@@ -160,6 +160,7 @@ size_t Internal::flush_occs (int lit) {
 // reason clauses not be collected and thus we have this additional check
 // hidden in 'Clause.collect', which for the root level context of
 // preprocessing is actually redundant.
+// this breaks invariant for watches so we need to fix them.
 
 inline void Internal::flush_watches (int lit, Watches & saved) {
   assert (saved.empty ());
@@ -173,6 +174,8 @@ inline void Internal::flush_watches (int lit, Watches & saved) {
     if (c->collect ()) continue;
     if (c->moved) c = w.clause = c->copy;
     w.size = c->size;
+    // TODO: fix invariant
+    //
     const int new_blit_pos = (c->literals[0] == lit);
     assert (c->literals[!new_blit_pos] == lit);        /*FW1*/
     w.blit = c->literals[new_blit_pos];

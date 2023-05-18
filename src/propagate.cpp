@@ -190,7 +190,6 @@ bool Internal::propagate () {
 
   if (level) require_mode (SEARCH);
   assert (!unsat);
-
   START (propagate);
 
   // Updating statistics counter in the propagation loops is costly so we
@@ -341,6 +340,10 @@ bool Internal::propagate () {
             search_assign (other, w.clause);
             // lrat_chain.clear (); done in search_assign
 
+            
+            // we need to change the blocking lit anyways
+            j[-1].blit = other;
+            
             // Similar code is in the implementation of the SAT'18 paper on
             // chronological backtracking but in our experience, this code
             // first does not really seem to be necessary for correctness,

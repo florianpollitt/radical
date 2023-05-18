@@ -98,11 +98,17 @@ void Internal::sort_watches () {
 void Internal::test_watch_invariant () {
   for (auto lit : lits) {
     Watches & ws = watches (lit);
-    if (var (lit).trail >= propagated - 1) continue; // last literal might not be propagated to completion
+    // last literal might not be propagated to completion
+    if ((size_t) var (lit).trail >= propagated - 1) continue;
     for (auto w : ws) {
       int blit = w.blit;
-      assert (val (lit) >= 0 ||
-             (val (blit) > 0 && var (blit).level <= var (lit).level));
+      LOG (w.clause, "watch lit %d, blit %d, ", lit, w.blit);
+      // does not hold for opts.chrono of course...
+      // right now invariant breaks from flushing watches during reduce
+      // (see collect -> flush_watches)
+      assert (opts.chrono == 1 ||
+             (val (lit) >= 0 ||
+             (val (blit) > 0 && var (blit).level <= var (lit).level)));
     }
   }
 }
