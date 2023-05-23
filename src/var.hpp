@@ -14,6 +14,8 @@ struct Var {
 
   int level;         // decision level
   int trail;         // trail height at assignment
+  int before;        // 0 if no other assignment before on this level
+  int next;          // 0 if no other assignment after on this level
   Clause * reason;   // implication graph edge during search
 };
 

@@ -88,6 +88,7 @@ extern "C" {
 #include "stats.hpp"
 #include "terminal.hpp"
 #include "tracer.hpp"
+#include "trail.hpp"
 #include "util.hpp"
 #include "var.hpp"
 #include "version.hpp"
