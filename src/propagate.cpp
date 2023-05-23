@@ -342,6 +342,7 @@ bool Internal::propagate () {
 
             
             // we need to change the blocking lit anyways
+            // not really neccessary
             j[-1].blit = other;
             
             // Similar code is in the implementation of the SAT'18 paper on

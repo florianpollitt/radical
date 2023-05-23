@@ -101,14 +101,20 @@ void Internal::test_watch_invariant () {
     // last literal might not be propagated to completion
     if ((size_t) var (lit).trail >= propagated - 1) continue;
     for (auto w : ws) {
-      int blit = w.blit;
+      if (w.clause->garbage) continue;
+      // int blit = w.blit;
       LOG (w.clause, "watch lit %d, blit %d, ", lit, w.blit);
       // does not hold for opts.chrono of course...
-      // right now invariant breaks from flushing watches during reduce
-      // (see collect -> flush_watches)
-      assert (opts.chrono == 1 ||
-             (val (lit) >= 0 ||
-             (val (blit) > 0 && var (blit).level <= var (lit).level)));
+      int witness = 0;
+      for (const auto & ok : * w.clause) {
+        if (val (ok) > 0) {
+          if (var (ok).level <= var (lit).level) {
+            witness = ok;
+          }
+        }
+      }
+      assert (opts.chrono > 0 ||
+              (val (lit) >= 0 || witness));
     }
   }
 }

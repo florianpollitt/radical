@@ -426,7 +426,12 @@ bool Internal::probe_propagate () {
             j--;
           } else if (!u) {
             if (level == 1) {
-              lits[0] = other, lits[1] = lit;
+              lits[0] = other;
+              lits[1] = lit;
+              // *k = lit;               // neccessary ?
+              // watch_literal (r, lit, w.clause);
+              // j--;                                   this breaks probing
+              //                                        invariant var (lits[1]).level = 1
               assert (lrat_chain.empty ());
               assert (!probe_reason);
               int dom = hyper_binary_resolve (w.clause);
