@@ -213,6 +213,11 @@ struct Internal {
   vector<int> shrinkable;       // removable or poison in 'shrink'
   Reap reap;                    // radix heap for shrink
 
+  vector<Trail> multitrail;     // allows us to realize a multilevel trail
+  vector<vector<int>*> trails;  // all assignments on all levels
+  Control control2;             // controls multitrail
+
+  
   vector<int> probes;           // remaining scheduled probes
   vector<Level> control;        // 'level + 1 == control.size ()'
   vector<Clause*> clauses;      // ordered collection of all clauses
@@ -930,6 +935,10 @@ struct Internal {
     bool instantiate_candidate(int lit, Clause *);
     void instantiate(Instantiator &);
 
+    // multilevel trail (in trail.cpp)
+    void new_trail_level ();
+    
+    
     // Hyper ternary resolution.
     //
     bool ternary_find_binary_clause(int, int);

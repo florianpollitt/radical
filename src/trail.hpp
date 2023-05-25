@@ -24,17 +24,16 @@ namespace CaDiCaL {
 
 
   
-struct Control {
+struct Trail {
   int level;                  // same as index of controls
   int first;                  // decision var of current level
   int last;                   // last var for level
   int propagated;             // last propagated var for current level
   int size;                   // int, size_t, int64_t or uint64_t ??
-  Control (int l) : level (l), first (0), last (0), propagated (0), size (0) {}
+  Trail (int l) : level (l), first (0), last (0), propagated (0), size (0) {}
 };
 
-class Trail {
-  vector<Control> controls;   // maybe put in internal instead...
+struct Control {
 
   int size;                   // sizes of all levels combined
   int levels;
@@ -52,11 +51,9 @@ class Trail {
     }
   };
 
-public:
   iterator begin () { return assert (levels >= 0), iterator (0); }
   iterator end ()   { return assert (levels >= 0), iterator (levels); }
-  Trail ();
-  ~Trail ();
+  Control () : levels (1) { }
 };
 
 }

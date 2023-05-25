@@ -55,6 +55,7 @@ Internal::Internal ()
   lits (this->max_var)
 {
   control.push_back (Level (0, 0));
+  new_trail_level ();
 }
 
 Internal::~Internal () {
@@ -66,6 +67,11 @@ Internal::~Internal () {
   if (lratchecker) delete lratchecker;
   if (lratbuilder) delete lratbuilder;
   if (vals) { vals -= vsize; delete [] vals; }
+  while (trails.size ()) {
+    auto t = trails.back ();
+    trails.pop_back ();
+    delete t;
+  }
 }
 
 /*------------------------------------------------------------------------*/
