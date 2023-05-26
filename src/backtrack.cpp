@@ -77,6 +77,11 @@ void Internal::backtrack (int new_level) {
   stats.backtracks++;
   update_target_and_best ();
 
+  if (opts.multitrail) {
+    multi_backtrack (new_level);
+    return;
+  }
+
   const size_t assigned = control[new_level+1].trail;
 
   LOG ("backtracking to decision level %d with decision %d and trail %zd",
@@ -122,4 +127,42 @@ void Internal::backtrack (int new_level) {
   level = new_level;
 }
 
+void Internal::multi_backtrack (int new_level) {
+
+  assert (opts.multitrail);
+  assert (new_level <= level);
+
+  LOG ("backtracking on multitrail to decision level %d with decision %d",
+    new_level, control[new_level].decision);
+
+  int elevated = 0, unassigned = 0;
+
+  for (int i = new_level; i <= level; i++) {   // unsave for level = INT_MAX
+    vector<int>* t = trails[i];
+    for (auto & lit : *t) {
+      Var & v = var (lit);
+      if (v.level == i) {
+        unassign (lit);
+        unassigned++;
+        trailsize--;
+      } else {
+        // after intelsat paper from 2022
+        LOG ("elevated literal %d on level %d", lit, v.level);
+        assert (opts.chrono);
+        assert (opts.multitrailrepair);
+        elevated++;
+      }
+    }
+  }
+
+  LOG ("unassigned %d literals %.0f%%",
+    unassigned, percent (unassigned, unassigned + elevated));
+  LOG ("elevated %d literals %.0f%%",
+    elevated, percent (elevated, unassigned + elevated));
+
+  clear_trails (new_level);
+  multitrail.resize (new_level);
+  control.resize (new_level + 1);
+  level = new_level;
+}
 }

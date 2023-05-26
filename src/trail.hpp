@@ -5,25 +5,12 @@
 namespace CaDiCaL {
 
 
-// trail is a doubly linked list with assignments
-// this is realized a vector of Var (in vtab)
-// additionally we need a control stack pointing to the decision and last
-// propagated literal in each level
-
-// we want to be able to iterate over a level -> ??
-//                        iterator for each level l
-//                        that starts with
-//                        v = controls[l].first and iterates with
-//                        v = Var (v).next until v = 0
-// we want a priority queue over levels which need to be propagated -> ??
-//                        Var (propagated).end != 0 -> needs to be propagated
-
-
-// trail also needs:
-//       size            -> int, size_t, int64_t or uint64_t ??
-
-
+// realizes trail or multitrail
+// assignments on level 0 are always pushed on trail
+// with option multitrail levels > 0 are on trails
+// then we need additional control structures.
   
+/*
 struct Trail {
   int level;                  // same as index of controls
   int first;                  // decision var of current level
@@ -38,7 +25,6 @@ struct Control {
   int size;                   // sizes of all levels combined
   int levels;
 
-  
   static unsigned inc (unsigned u) { return u + 1u; }
   class iterator {
     int idx;
@@ -55,7 +41,7 @@ struct Control {
   iterator end ()   { return assert (levels >= 0), iterator (levels); }
   Control () : levels (1) { }
 };
-
+*/
 }
 
 #endif

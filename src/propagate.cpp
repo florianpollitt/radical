@@ -111,7 +111,7 @@ inline void Internal::search_assign (int lit, Clause * reason) {
   if (!lit_level) reason = 0;
 
   v.level = lit_level;
-  v.trail = (int) trail.size ();
+  v.trail = trail_size (lit_level);
   v.reason = reason;
   if (!lit_level) learn_unit_clause (lit);  // increases 'stats.fixed'
   const signed char tmp = sign (lit);
@@ -121,7 +121,7 @@ inline void Internal::search_assign (int lit, Clause * reason) {
   assert (val (-lit) < 0);
   if (!searching_lucky_phases)
     phases.saved[idx] = tmp;                // phase saving during search
-  trail.push_back (lit);
+  trail_push (lit, lit_level);
 #ifdef LOGGING
   if (!lit_level) LOG ("root-level unit assign %d @ 0", lit);
   else LOG (reason, "search assign %d @ %d", lit, lit_level);
@@ -156,8 +156,7 @@ void Internal::assign_unit (int lit) {
 void Internal::search_assume_decision (int lit) {
   require_mode (SEARCH);
   assert (propagated == trail.size ());
-  level++;
-  control.push_back (Level (lit, trail.size ()));
+  new_trail_level (lit);
   LOG ("search decide %d", lit);
   search_assign (lit, decision_reason);
 }

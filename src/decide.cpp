@@ -77,9 +77,17 @@ int Internal::likely_phase (int idx) { return decide_phase (idx, false); }
 /*------------------------------------------------------------------------*/
 
 bool Internal::satisfied () {
-  size_t assigned = trail.size ();
-  if (propagated < assigned) return false;
   if ((size_t) level < assumptions.size () + (!!constraint.size ())) return false;
+  if (propagated < trail.size ()) return false;
+  if (opts.multitrail) {
+    for (int i = 0; i < level; i++) {
+      if ((size_t) multitrail[i] < trails[i]->size ()) {
+        continue;  // TODO: once propagate is correct remove this
+        return false;
+      }
+    }
+  }
+  size_t assigned = trail.size () + trailsize;
   return (assigned == (size_t) max_var);
 }
 
@@ -99,8 +107,7 @@ int Internal::decide () {
       res = 20;
     } else if (tmp > 0) {
       LOG ("assumption %d already satisfied", lit);
-      level++;
-      control.push_back (Level (0, trail.size ()));
+      new_trail_level (0);
       LOG ("added pseudo decision level");
     } else {
       LOG ("deciding assumption %d", lit);
@@ -115,8 +122,7 @@ int Internal::decide () {
         LOG ("constraint lit %d falsified", lit);
       } else if (tmp > 0) {
         LOG ("literal %d satisfies constraint and is implied by assumptions", lit);
-        level++;
-        control.push_back (Level (0, trail.size ()));
+        new_trail_level (0);
         LOG ("added pseudo decision level for constraint");
         satisfied_constraint = true;
         break;

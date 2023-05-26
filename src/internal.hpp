@@ -213,9 +213,9 @@ struct Internal {
   vector<int> shrinkable;       // removable or poison in 'shrink'
   Reap reap;                    // radix heap for shrink
 
-  vector<Trail> multitrail;     // allows us to realize a multilevel trail
+  vector<int> multitrail;       // "propagated" for each level
   vector<vector<int>*> trails;  // all assignments on all levels
-  Control control2;             // controls multitrail
+  size_t trailsize;             // controls multitrail
 
   
   vector<int> probes;           // remaining scheduled probes
@@ -651,6 +651,7 @@ struct Internal {
     termination_forced = true;
   }
 
+  
   // Reducing means determining useless clauses with 'reduce' in
   // 'reduce.cpp' as well as root level satisfied clause and then removing
   // those which are not used as reason anymore with garbage collection.
@@ -936,7 +937,11 @@ struct Internal {
     void instantiate(Instantiator &);
 
     // multilevel trail (in trail.cpp)
-    void new_trail_level ();
+    void new_trail_level (int lit);
+    void clear_trails (int level);
+    void multi_backtrack (int new_level);
+    int trail_size (int l);
+    void trail_push (int lit, int l);
     
     
     // Hyper ternary resolution.
