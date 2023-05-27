@@ -80,4 +80,25 @@ int Internal::next_propagated (int l) {
   return multitrail[l-1];
 }
 
+Clause * Internal::propagation_conflict (int l, Clause * c) {
+  if (!opts.multitrailrepair)
+    return c;
+  conflicts.push_back (c);
+  for (auto c : conflicts) {
+    if (conflicting_level (c) <= l) {
+      return c;
+    }
+  }
+  return 0;
+}
+
+int Internal::conflicting_level (Clause * c) {
+  int l = 0;
+  for (auto & lit : *c) {
+    const int ll = var (lit).level;
+    l = l < ll ? ll : l;
+  }
+  return l;
+}
+
 }

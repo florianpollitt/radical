@@ -192,6 +192,7 @@ struct Internal {
   vector<Bins> big;             // binary implication graph
   vector<Watches> wtab;         // table of watches for all literals
   Clause * conflict;            // set in 'propagation', reset in 'analyze'
+  vector<Clause *> conflicts;    // set in propagate for opts.multitrailrepair
   Clause * ignore;              // ignored during 'vivify_propagate'
   Clause * probe_reason;        // set during probing
   size_t propagated;            // next trail position to propagate
@@ -939,6 +940,7 @@ struct Internal {
     void instantiate(Instantiator &);
 
     // multilevel trail in trail.cpp
+    // TODO: inline some of these in propagate.cpp
     //
     void new_trail_level (int lit);
     void clear_trails (int level);
@@ -948,6 +950,8 @@ struct Internal {
     int next_propagation_level (int last);
     vector<int> * next_trail (int l);
     int next_propagated (int l);
+    Clause * propagation_conflict (int l, Clause * c);
+    int conflicting_level (Clause * c);
       
     
     // Hyper ternary resolution.

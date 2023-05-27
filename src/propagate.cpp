@@ -185,10 +185,23 @@ void Internal::search_assign_driving (int lit, Clause * c) {
 // propagation costs (2013 JAIR article by Ian Gent) at the expense of four
 // more bytes for each clause.
 
+// this propagation routine has three different modes:
+// normal, multitrail, multitrailrepair.
+// especially with opts.chrono these behave differently
+// in normal mode everything we have only one trail which we propagate linearly
+// in multitrail mode we have one trail for each level where we propagate
+// literals bottom up for each level
+// in multitrailrepair mode we do the same but also differentiate conflicts
+// and repair missed implications, which can lead to elevated literals
+
+// the differences are mostly hidden in trail.cpp -> TODO inline these
+// functions here instead.
+
 bool Internal::propagate () {
 
   if (level) require_mode (SEARCH);
   assert (!unsat);
+  assert (conflicts.empty ());
   START (propagate);
 
   // Updating statistics counter in the propagation loops is costly so we
@@ -200,6 +213,8 @@ bool Internal::propagate () {
   int64_t before = next_propagated (proplevel);
   size_t current = before;
   bool repairing = opts.multitrailrepair;
+  
+  // TODO: one more outer loop for multitrail
   
   while (proplevel >= 0 && !conflict && current != t.size ()) {
     LOG ("propagating level %d from %zd to %zd", proplevel, before, t.size ());
@@ -221,9 +236,10 @@ bool Internal::propagate () {
       const signed char b = val (w.blit);
       int l = var (w.blit).level;
       bool repair = repairing && l > proplevel;
+      int unisat = w.blit * (repair) * (b > 0);  // multitrailrepair mode
 
       // if (b > 0 && !repair) continue;   // blocking literal satisfied
-      if (b > 0) continue;   // blocking literal satisfied
+      if (b > 0 && !unisat) continue;   // blocking literal satisfied
 
       if (w.binary ()) {
 
@@ -252,7 +268,12 @@ bool Internal::propagate () {
         // to access the clause at all (only during conflict analysis, and
         // there also only to simplify the code).
 
-        if (b < 0) conflict = w.clause;          // but continue ...
+        // TODO: different for unisat != 0
+        if (unisat) {
+          assert (b > 0);
+          // TODO: fix missed implication by elevating w.blit
+        }
+        else if (b < 0) conflict = propagation_conflict (proplevel, w.clause);   // but continue ...
         else {
           build_chain_for_units (w.blit, w.clause);
           search_assign (w.blit, w.clause);
@@ -287,9 +308,9 @@ bool Internal::propagate () {
         const signed char u = val (other); // value of the other watch
         l = var (other).level;
         repair = repairing && l > proplevel;
+        unisat = other * (repair) * (u > 0);  // multitrailrepair mode
 
-        // if (u > 0 && !repair) j[-1].blit = other; // satisfied, just replace blit
-        if (u > 0) j[-1].blit = other; // satisfied, just replace blit
+        if (u > 0 && !unisat) j[-1].blit = other; // satisfied, just replace blit
         else {
 
           // This follows Ian Gent's (JAIR'13) idea of saving the position
@@ -322,14 +343,12 @@ bool Internal::propagate () {
               k++;
           }
 
-          l = var (r).level;
-          repair = repairing && l > proplevel;
-
           w.clause->pos = k - lits;  // always save position
 
           assert (lits + 2 <= k), assert (k <= w.clause->end ());
 
           // if (v > 0 && !repair) {
+          // TODO: potentially change watches.
           if (v > 0) {
 
             // Replacement satisfied, so just replace 'blit'.
