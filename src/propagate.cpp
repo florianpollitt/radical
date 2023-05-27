@@ -194,11 +194,20 @@ bool Internal::propagate () {
   // Updating statistics counter in the propagation loops is costly so we
   // delay until propagation ran to completion.
   //
-  int64_t before = propagated;
+  
+  int proplevel = next_propagation_level (-1);
+  vector<int> t = *next_trail (proplevel);
+  int64_t before = next_propagated (proplevel);
+  size_t current = before;
+  bool repairing = opts.multitrailrepair;
+  
+  while (proplevel >= 0 && !conflict && current != t.size ()) {
+    LOG ("propagating level %d from %zd to %zd", proplevel, before, t.size ());
 
-  while (!conflict && propagated != trail.size ()) {
+    assert (current < t.size ());
+    const int lit = -t[current++];
+    if (var (lit).level < proplevel) continue;
 
-    const int lit = -trail[propagated++];
     LOG ("propagating %d", -lit);
     Watches & ws = watches (lit);
 
@@ -210,8 +219,11 @@ bool Internal::propagate () {
 
       const Watch w = *j++ = *i++;
       const signed char b = val (w.blit);
+      int l = var (w.blit).level;
+      bool repair = repairing && l > proplevel;
 
-      if (b > 0) continue;                // blocking literal satisfied
+      // if (b > 0 && !repair) continue;   // blocking literal satisfied
+      if (b > 0) continue;   // blocking literal satisfied
 
       if (w.binary ()) {
 
@@ -249,6 +261,8 @@ bool Internal::propagate () {
 
       } else {
 
+        // why is this line here and not right below ????
+        //         while (i != eow)
         if (conflict) break; // Stop if there was a binary conflict already.
 
         // The cache line with the clause data is forced to be loaded here
@@ -271,7 +285,10 @@ bool Internal::propagate () {
         //
         const int other = lits[0] ^ lits[1] ^ lit;
         const signed char u = val (other); // value of the other watch
+        l = var (other).level;
+        repair = repairing && l > proplevel;
 
+        // if (u > 0 && !repair) j[-1].blit = other; // satisfied, just replace blit
         if (u > 0) j[-1].blit = other; // satisfied, just replace blit
         else {
 
@@ -292,6 +309,7 @@ bool Internal::propagate () {
 
           int r = 0;
           signed char v = -1;
+          
 
           while (k != end && (v = val (r = *k)) < 0)
             k++;
@@ -304,10 +322,14 @@ bool Internal::propagate () {
               k++;
           }
 
+          l = var (r).level;
+          repair = repairing && l > proplevel;
+
           w.clause->pos = k - lits;  // always save position
 
           assert (lits + 2 <= k), assert (k <= w.clause->end ());
 
+          // if (v > 0 && !repair) {
           if (v > 0) {
 
             // Replacement satisfied, so just replace 'blit'.

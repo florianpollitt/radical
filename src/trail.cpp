@@ -47,4 +47,37 @@ void Internal::trail_push (int lit, int l) {
   trails[l-1]->push_back (lit);
 }
 
+int Internal::next_propagation_level (int last) {
+  if (!opts.multitrail) {
+    return - (!(propagated == trail.size ()));
+  }
+  if (last == -1 && propagated < trail.size ())
+    return 0;
+  for (int l = last; l < level; l++) {
+    if (l < 0) continue;
+    assert (l >= 0 && trails.size () >= (size_t) l);
+    if (multitrail[l] < trails[l]->size ()) {
+      return l + 1;
+    }
+  }
+  return -1;
+}
+
+vector<int> * Internal::next_trail (int l) {
+  if (!opts.multitrail || l <= 0) {
+    return &trail;
+  }
+  assert (l > 0 && trails.size () >= (size_t) l);
+  return trails[l-1];
+}
+
+int Internal::next_propagated (int l) {
+  if (l < 0) return 0;
+  if (!opts.multitrail || l == 0) {
+    return propagated;
+  }
+  assert (l > 0 && trails.size () >= (size_t) l);
+  return multitrail[l-1];
+}
+
 }

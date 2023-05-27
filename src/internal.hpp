@@ -213,7 +213,7 @@ struct Internal {
   vector<int> shrinkable;       // removable or poison in 'shrink'
   Reap reap;                    // radix heap for shrink
 
-  vector<int> multitrail;       // "propagated" for each level
+  vector<size_t> multitrail;       // "propagated" for each level
   vector<vector<int>*> trails;  // all assignments on all levels
   size_t trailsize;             // controls multitrail
 
@@ -930,19 +930,25 @@ struct Internal {
     int elim_round(bool &completed);
     void elim(bool update_limits = true);
 
+    // instantiate
+    //
     void inst_assign(int lit);
     bool inst_propagate();
     void collect_instantiation_candidates(Instantiator &);
     bool instantiate_candidate(int lit, Clause *);
     void instantiate(Instantiator &);
 
-    // multilevel trail (in trail.cpp)
+    // multilevel trail in trail.cpp
+    //
     void new_trail_level (int lit);
     void clear_trails (int level);
     void multi_backtrack (int new_level);
     int trail_size (int l);
     void trail_push (int lit, int l);
-    
+    int next_propagation_level (int last);
+    vector<int> * next_trail (int l);
+    int next_propagated (int l);
+      
     
     // Hyper ternary resolution.
     //
