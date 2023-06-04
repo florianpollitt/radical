@@ -192,7 +192,7 @@ struct Internal {
   vector<Bins> big;             // binary implication graph
   vector<Watches> wtab;         // table of watches for all literals
   Clause * conflict;            // set in 'propagation', reset in 'analyze'
-  vector<Clause *> conflicts;    // set in propagate for opts.multitrailrepair
+  vector<Clause *> conflicts;   // set in propagate for opts.multitrailrepair
   Clause * ignore;              // ignored during 'vivify_propagate'
   Clause * probe_reason;        // set during probing
   size_t propagated;            // next trail position to propagate
@@ -200,6 +200,7 @@ struct Internal {
   size_t best_assigned;         // best maximum assigned ever
   size_t target_assigned;       // maximum assigned without conflict
   size_t no_conflict_until;     // largest trail prefix without conflict
+  size_t no_conflict_level;     // largest level without conflict
   vector<int> trail;            // currently assigned literals
   vector<int> clause;           // simplified in parsing & learning
   vector<int> assumptions;      // assumed literals
@@ -214,7 +215,7 @@ struct Internal {
   vector<int> shrinkable;       // removable or poison in 'shrink'
   Reap reap;                    // radix heap for shrink
 
-  vector<size_t> multitrail;       // "propagated" for each level
+  vector<size_t> multitrail;    // "propagated" for each level
   vector<vector<int>*> trails;  // all assignments on all levels
   size_t trailsize;             // controls multitrail
 
@@ -954,7 +955,6 @@ struct Internal {
     int conflicting_level (Clause * c);
     void elevate_lit (int lit, Clause * reason);
     void set_propagated (int l, int prop);
-      
     
     // Hyper ternary resolution.
     //

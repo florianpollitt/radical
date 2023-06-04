@@ -83,12 +83,17 @@ int Internal::next_propagated (int l) {
 Clause * Internal::propagation_conflict (int l, Clause * c) {
   if (!opts.multitrailrepair)
     return c;
-  conflicts.push_back (c);
-  for (auto c : conflicts) {
-    if (conflicting_level (c) <= l) {
-      return c;
+  if (c)
+    conflicts.push_back (c);
+  int conf = conflicting_level (c);
+  for (auto cl : conflicts) {
+    int ccl = conflicting_level (cl);
+    if (ccl < conf) {
+      c = cl;
+      conf = ccl;
     }
   }
+  if (conf <= l || l < 0) return c;
   return 0;
 }
 
@@ -109,5 +114,6 @@ void Internal::set_propagated (int l, int prop) {
   multitrail[l-1] = prop;
   
 }
+
 
 }

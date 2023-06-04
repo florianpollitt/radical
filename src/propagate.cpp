@@ -213,6 +213,7 @@ bool Internal::propagate () {
   if (level) require_mode (SEARCH);
   assert (!unsat);
   assert (conflicts.empty ());
+  assert (!conflict);
   START (propagate);
 
   // Updating statistics counter in the propagation loops is costly so we
@@ -223,19 +224,20 @@ bool Internal::propagate () {
   
   LOG ("PROPAGATION");
   while (proplevel < level) {
-    LOG ("PROPAGATION on level %d", proplevel);
     proplevel = next_propagation_level (proplevel);
     if (proplevel < 0) break;
-    vector<int> t = *next_trail (proplevel);
+    LOG ("PROPAGATION on level %d", proplevel);
+    vector<int> * t = next_trail (proplevel);
     int64_t before = next_propagated (proplevel);
     size_t current = before;
-    bool repairing = opts.multitrailrepair;
+    const bool repairing = opts.multitrailrepair;
     
-    while (proplevel >= 0 && !conflict && current != t.size ()) {
-      LOG ("propagating level %d from %zd to %zd", proplevel, before, t.size ());
+    while (!conflict && current != t->size ()) {
+      assert (opts.multitrail || t == &trail);
+      LOG ("propagating level %d from %zd to %zd", proplevel, before, t->size ());
   
-      assert (current < t.size ());
-      const int lit = -t[current++];
+      assert (current < t->size ());
+      const int lit = -(*t)[current++];
       if (var (lit).level < proplevel) continue;
   
       LOG ("propagating %d", -lit);
@@ -472,8 +474,9 @@ bool Internal::propagate () {
               // The other watch is assigned false ('u < 0') and all other
               // literals as well (still 'v < 0'), thus we found a conflict.
   
-              conflict = w.clause;
-              break;
+              conflict = propagation_conflict (proplevel, w.clause);
+              if (conflict)
+                break;
             }
           }
         }
@@ -486,8 +489,12 @@ bool Internal::propagate () {
   
         ws.resize (j - ws.begin ());
       }
+      LOG ("PROPAGATION end loop with current %ld, trail %zd", current, t->size ());
     }
     set_propagated (proplevel, current);
+    if (!conflict)
+      conflict = propagation_conflict (proplevel, 0);
+    if (conflict) conflicts.clear ();
     if (searching_lucky_phases) {
   
       if (conflict)
@@ -499,8 +506,10 @@ bool Internal::propagate () {
       //
       stats.propagations.search += propagated - before;
   
-      if (!conflict) no_conflict_until = propagated;
-      else {
+      if (!conflict) {
+        no_conflict_level = proplevel;
+        no_conflict_until = next_propagated (proplevel);
+      } else {
   
         if (stable) stats.stabconflicts++;
         stats.conflicts++;
@@ -509,15 +518,18 @@ bool Internal::propagate () {
   
         // The trail before the current decision level was conflict free.
         //
+        // TODO: opts.multitrail
         no_conflict_until = control[level].trail;
+        no_conflict_level = proplevel - 1;
       }
     }
+    if (conflict) break;
   }
 
 
   STOP (propagate);
 
-  test_watch_invariant ();
+  // test_watch_invariant ();
   return !conflict;
 }
 
