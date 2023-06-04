@@ -44,14 +44,9 @@ inline int Internal::assignment_level (int lit, Clause * reason) {
   return res;
 }
 
-
 // calculate lrat_chain
-// inlined because mostly called inside of propagate hjm TODO :/
-// TODO: not inlined because its used in vivify. Bad??
-// also TODO: to avoid if branch in propagate use this in learn unit clause
-// need to rember reason clause for that
 //
-void Internal::build_chain_for_units (int lit, Clause * reason) {
+inline void Internal::build_chain_for_units (int lit, Clause * reason) {
   if (!opts.lrat || opts.lratexternal) return;
   // LOG ("building chain for units");        bad line for debugging equivalence
   if (opts.chrono && assignment_level (lit, reason)) return;
@@ -69,8 +64,6 @@ void Internal::build_chain_for_units (int lit, Clause * reason) {
 }
 
 // same code as above but reason is assumed to be conflict and lit is not needed
-// also not inlined as it is not called inside of propagate.
-// TODO: not inlined because its used in vivify. Bad??
 //
 void Internal::build_chain_for_empty () {
   if (!opts.lrat || opts.lratexternal || !lrat_chain.empty ()) return;
@@ -85,6 +78,24 @@ void Internal::build_chain_for_empty () {
     lrat_chain.push_back (id);
   }
   lrat_chain.push_back (conflict->id);
+}
+
+/*------------------------------------------------------------------------*/
+
+inline void Internal::elevate_lit (int lit, Clause * reason) {
+  // TODO: potentially update next, before in var
+  // not yet decided wether or not i need them for conflict analysis
+  const int idx = vidx (lit);
+  assert (vals[idx]);
+  assert (reason);
+  Var & v = var (idx);
+  const int lit_level = conflicting_level (reason);
+  assert (lit_level < v.level);
+  LOG (reason, "elevated %d @ %d to %d", lit, v.level, lit_level);
+  v.level = lit_level;
+  v.reason = reason;
+  v.trail = trail_size (lit_level);
+  trail_push (lit, lit_level);
 }
 
 /*------------------------------------------------------------------------*/
@@ -208,267 +219,301 @@ bool Internal::propagate () {
   // delay until propagation ran to completion.
   //
   
-  int proplevel = next_propagation_level (-1);
-  vector<int> t = *next_trail (proplevel);
-  int64_t before = next_propagated (proplevel);
-  size_t current = before;
-  bool repairing = opts.multitrailrepair;
+  int proplevel = -1;
   
-  // TODO: one more outer loop for multitrail
+  LOG ("PROPAGATION");
+  while (proplevel < level) {
+    LOG ("PROPAGATION on level %d", proplevel);
+    proplevel = next_propagation_level (proplevel);
+    if (proplevel < 0) break;
+    vector<int> t = *next_trail (proplevel);
+    int64_t before = next_propagated (proplevel);
+    size_t current = before;
+    bool repairing = opts.multitrailrepair;
+    
+    while (proplevel >= 0 && !conflict && current != t.size ()) {
+      LOG ("propagating level %d from %zd to %zd", proplevel, before, t.size ());
   
-  while (proplevel >= 0 && !conflict && current != t.size ()) {
-    LOG ("propagating level %d from %zd to %zd", proplevel, before, t.size ());
-
-    assert (current < t.size ());
-    const int lit = -t[current++];
-    if (var (lit).level < proplevel) continue;
-
-    LOG ("propagating %d", -lit);
-    Watches & ws = watches (lit);
-
-    const const_watch_iterator eow = ws.end ();
-    watch_iterator j = ws.begin ();
-    const_watch_iterator i = j;
-
-    while (i != eow) {
-
-      const Watch w = *j++ = *i++;
-      const signed char b = val (w.blit);
-      int l = var (w.blit).level;
-      bool repair = repairing && l > proplevel;
-      int unisat = w.blit * (repair) * (b > 0);  // multitrailrepair mode
-
-      // if (b > 0 && !repair) continue;   // blocking literal satisfied
-      if (b > 0 && !unisat) continue;   // blocking literal satisfied
-
-      if (w.binary ()) {
-
-        // In principle we can ignore garbage binary clauses too, but that
-        // would require to dereference the clause pointer all the time with
-        //
-        // if (w.clause->garbage) { j--; continue; } // (*)
-        //
-        // This is too costly.  It is however necessary to produce correct
-        // proof traces if binary clauses are traced to be deleted ('d ...'
-        // line) immediately as soon they are marked as garbage.  Actually
-        // finding instances where this happens is pretty difficult (six
-        // parallel fuzzing jobs in parallel took an hour), but it does
-        // occur.  Our strategy to avoid generating incorrect proofs now is
-        // to delay tracing the deletion of binary clauses marked as garbage
-        // until they are really deleted from memory.  For large clauses
-        // this is not necessary since we have to access the clause anyhow.
-        //
-        // Thanks go to Mathias Fleury, who wanted me to explain why the
-        // line '(*)' above was in the code. Removing it actually really
-        // improved running times and thus I tried to find concrete
-        // instances where this happens (which I found), and then
-        // implemented the described fix.
-
-        // Binary clauses are treated separately since they do not require
-        // to access the clause at all (only during conflict analysis, and
-        // there also only to simplify the code).
-
-        // TODO: different for unisat != 0
-        if (unisat) {
-          assert (b > 0);
-          // TODO: fix missed implication by elevating w.blit
-        }
-        else if (b < 0) conflict = propagation_conflict (proplevel, w.clause);   // but continue ...
-        else {
-          build_chain_for_units (w.blit, w.clause);
-          search_assign (w.blit, w.clause);
-          // lrat_chain.clear (); done in search_assign
-        }
-
-      } else {
-
-        // why is this line here and not right below ????
-        //         while (i != eow)
-        if (conflict) break; // Stop if there was a binary conflict already.
-
-        // The cache line with the clause data is forced to be loaded here
-        // and thus this first memory access below is the real hot-spot of
-        // the solver.  Note, that this check is positive very rarely and
-        // thus branch prediction should be almost perfect here.
-
-        if (w.clause->garbage) { j--; continue; }
-
-        literal_iterator lits = w.clause->begin ();
-
-        // Simplify code by forcing 'lit' to be the second literal in the
-        // clause.  This goes back to MiniSAT.  We use a branch-less version
-        // for conditionally swapping the first two literals, since it
-        // turned out to be substantially faster than this one
-        //
-        //  if (lits[0] == lit) swap (lits[0], lits[1]);
-        //
-        // which achieves the same effect, but needs a branch.
-        //
-        const int other = lits[0] ^ lits[1] ^ lit;
-        const signed char u = val (other); // value of the other watch
-        l = var (other).level;
-        repair = repairing && l > proplevel;
-        unisat = other * (repair) * (u > 0);  // multitrailrepair mode
-
-        if (u > 0 && !unisat) j[-1].blit = other; // satisfied, just replace blit
-        else {
-
-          // This follows Ian Gent's (JAIR'13) idea of saving the position
-          // of the last watch replacement.  In essence it needs two copies
-          // of the default search for a watch replacement (in essence the
-          // code in the 'if (v < 0) { ... }' block below), one starting at
-          // the saved position until the end of the clause and then if that
-          // one failed to find a replacement another one starting at the
-          // first non-watched literal until the saved position.
-
-          const int size = w.clause->size;
-          const literal_iterator middle = lits + w.clause->pos;
-          const const_literal_iterator end = lits + size;
-          literal_iterator k = middle;
-
-          // Find replacement watch 'r' at position 'k' with value 'v'.
-
-          int r = 0;
-          signed char v = -1;
-          
-
-          while (k != end && (v = val (r = *k)) < 0)
-            k++;
-
-          if (v < 0) {  // need second search starting at the head?
-
-            k = lits + 2;
-            assert (w.clause->pos <= size);
-            while (k != middle && (v = val (r = *k)) < 0)
-              k++;
+      assert (current < t.size ());
+      const int lit = -t[current++];
+      if (var (lit).level < proplevel) continue;
+  
+      LOG ("propagating %d", -lit);
+      Watches & ws = watches (lit);
+  
+      const const_watch_iterator eow = ws.end ();
+      watch_iterator j = ws.begin ();
+      const_watch_iterator i = j;
+  
+      while (i != eow) {
+  
+        const Watch w = *j++ = *i++;
+        const signed char b = val (w.blit);
+        int l = var (w.blit).level;
+        bool repair = repairing && l > proplevel;
+        int multisat = w.blit * (repair) * (b > 0);  // multitrailrepair mode
+  
+        // if (b > 0 && !repair) continue;   // blocking literal satisfied
+        if (b > 0 && !multisat) continue;   // blocking literal satisfied
+  
+        if (w.binary ()) {
+  
+          // In principle we can ignore garbage binary clauses too, but that
+          // would require to dereference the clause pointer all the time with
+          //
+          // if (w.clause->garbage) { j--; continue; } // (*)
+          //
+          // This is too costly.  It is however necessary to produce correct
+          // proof traces if binary clauses are traced to be deleted ('d ...'
+          // line) immediately as soon they are marked as garbage.  Actually
+          // finding instances where this happens is pretty difficult (six
+          // parallel fuzzing jobs in parallel took an hour), but it does
+          // occur.  Our strategy to avoid generating incorrect proofs now is
+          // to delay tracing the deletion of binary clauses marked as garbage
+          // until they are really deleted from memory.  For large clauses
+          // this is not necessary since we have to access the clause anyhow.
+          //
+          // Thanks go to Mathias Fleury, who wanted me to explain why the
+          // line '(*)' above was in the code. Removing it actually really
+          // improved running times and thus I tried to find concrete
+          // instances where this happens (which I found), and then
+          // implemented the described fix.
+  
+          // Binary clauses are treated separately since they do not require
+          // to access the clause at all (only during conflict analysis, and
+          // there also only to simplify the code).
+  
+          if (multisat) {
+            assert (b > 0);
+            // fix missed implication by elevating w.blit
+            elevate_lit (w.blit, w.clause);
           }
-
-          w.clause->pos = k - lits;  // always save position
-
-          assert (lits + 2 <= k), assert (k <= w.clause->end ());
-
-          // if (v > 0 && !repair) {
-          // TODO: potentially change watches.
-          if (v > 0) {
-
-            // Replacement satisfied, so just replace 'blit'.
-
-            j[-1].blit = r;
-
-          } else if (!v) {
-
-            // Found new unassigned replacement literal to be watched.
-
-            LOG (w.clause, "unwatch %d in", lit);
-
-            lits[0] = other;
-            lits[1] = r;
-            *k = lit;
-
-            watch_literal (r, lit, w.clause);
-
-            j--;  // Drop this watch from the watch list of 'lit'.
-
-          } else if (!u) {
-
-            assert (v < 0);
-
-            // The other watch is unassigned ('!u') and all other literals
-            // assigned to false (still 'v < 0'), thus we found a unit.
-            //
-            build_chain_for_units (other, w.clause);
-            search_assign (other, w.clause);
+          else if (b < 0) conflict = propagation_conflict (proplevel, w.clause);   // but continue ...
+          else {
+            build_chain_for_units (w.blit, w.clause);
+            search_assign (w.blit, w.clause);
             // lrat_chain.clear (); done in search_assign
-
+          }
+  
+        } else {
+  
+          // TODO: why is this line here and not right below ????
+          //         while (i != eow)
+          if (conflict) break; // Stop if there was a binary conflict already.
+  
+          // The cache line with the clause data is forced to be loaded here
+          // and thus this first memory access below is the real hot-spot of
+          // the solver.  Note, that this check is positive very rarely and
+          // thus branch prediction should be almost perfect here.
+  
+          if (w.clause->garbage) { j--; continue; }
+  
+          literal_iterator lits = w.clause->begin ();
+  
+          // Simplify code by forcing 'lit' to be the second literal in the
+          // clause.  This goes back to MiniSAT.  We use a branch-less version
+          // for conditionally swapping the first two literals, since it
+          // turned out to be substantially faster than this one
+          //
+          //  if (lits[0] == lit) swap (lits[0], lits[1]);
+          //
+          // which achieves the same effect, but needs a branch.
+          //
+          const int other = lits[0] ^ lits[1] ^ lit;
+          const signed char u = val (other); // value of the other watch
+          l = var (other).level;
+          repair = repairing && l > proplevel;
+          multisat = other * (repair) * (u > 0);  // multitrailrepair mode
+  
+          if (u > 0 && !multisat) j[-1].blit = other; // satisfied, just replace blit
+          else {
+  
+            // This follows Ian Gent's (JAIR'13) idea of saving the position
+            // of the last watch replacement.  In essence it needs two copies
+            // of the default search for a watch replacement (in essence the
+            // code in the 'if (v < 0) { ... }' block below), one starting at
+            // the saved position until the end of the clause and then if that
+            // one failed to find a replacement another one starting at the
+            // first non-watched literal until the saved position.
+  
+            const int size = w.clause->size;
+            const literal_iterator middle = lits + w.clause->pos;
+            const const_literal_iterator end = lits + size;
+            literal_iterator k = middle;
+  
+            // Find replacement watch 'r' at position 'k' with value 'v'.
+  
+            int r = 0;
+            signed char v = -1;
             
-            // we need to change the blocking lit anyways
-            // not really neccessary
-            j[-1].blit = other;
-            
-            // Similar code is in the implementation of the SAT'18 paper on
-            // chronological backtracking but in our experience, this code
-            // first does not really seem to be necessary for correctness,
-            // and further does not improve running time either.
-            //
-            if (opts.chrono > 1) {  // ... always do some variant ...
-
-              const int other_level = var (other).level;
   
-              if (other_level > var (lit).level) {
+            while (k != end && (v = val (r = *k)) < 0)
+              k++;
   
-                // The assignment level of the new unit 'other' is larger
-                // than the assignment level of 'lit'.  Thus we should find
-                // another literal in the clause at that higher assignment
-                // level and watch that instead of 'lit'.
+            if (v < 0) {  // need second search starting at the head?
   
-                assert (size > 2);
-  
-                int pos, s = 0;
-  
-                for (pos = 2; pos < size; pos++)
-                  if (var (s = lits[pos]).level == other_level)
-                    break;
-  
-                assert (s);
-                assert (pos < size);
-  
-                LOG (w.clause, "unwatch %d in", lit);
-                lits[pos] = lit;
-                lits[0] = other;
-                lits[1] = s;
-                watch_literal (s, other, w.clause);
-  
-                j--;  // Drop this watch from the watch list of 'lit'.
-              }
+              k = lits + 2;
+              assert (w.clause->pos <= size);
+              while (k != middle && (v = val (r = *k)) < 0)
+                k++;
             }
-          } else {
-
-            assert (u < 0);
-            assert (v < 0);
-
-            // The other watch is assigned false ('u < 0') and all other
-            // literals as well (still 'v < 0'), thus we found a conflict.
-
-            conflict = w.clause;
-            break;
+  
+            w.clause->pos = k - lits;  // always save position
+  
+            assert (lits + 2 <= k), assert (k <= w.clause->end ());
+  
+            // if (v > 0 && !repair) {
+            // TODO: potentially change watches.
+            // and possibly fix missed implication by elevating
+            if (v > 0) {
+              bool unisatrepair = repairing && var (r).level > proplevel;
+              if (!multisat && unisatrepair) {
+                literal_iterator j = lits;
+                for (; j < end; j++) {
+                  int literal = *j;
+                  if (literal == r) continue;
+                  const auto tmp = val (literal);
+                  if (tmp < 0) continue;
+                  multisat = literal;
+                  break;
+                }
+              }
+              if (!multisat && unisatrepair) {
+                // fix reimplication by elevating r
+                elevate_lit (r, w.clause);
+                multisat = other;                // maybe lit?
+              }
+              if (multisat) {
+                // replace watch
+                LOG (w.clause, "unwatch %d in", lit);
+    
+                lits[0] = other;
+                lits[1] = r;
+                *k = lit;
+    
+                watch_literal (r, multisat, w.clause);
+    
+                j--;  // Drop this watch from the watch list of 'lit'.
+              } else
+                // Replacement satisfied, so just replace 'blit'.  
+                j[-1].blit = r;
+  
+            } else if (!v) {
+  
+              // Found new unassigned replacement literal to be watched.
+  
+              LOG (w.clause, "unwatch %d in", lit);
+  
+              lits[0] = other;
+              lits[1] = r;
+              *k = lit;
+  
+              watch_literal (r, lit, w.clause);
+  
+              j--;  // Drop this watch from the watch list of 'lit'.
+  
+            } else if (!u) {
+  
+              assert (v < 0);
+  
+              // The other watch is unassigned ('!u') and all other literals
+              // assigned to false (still 'v < 0'), thus we found a unit.
+              //
+              build_chain_for_units (other, w.clause);
+              search_assign (other, w.clause);
+              // lrat_chain.clear (); done in search_assign
+  
+              
+              // we need to change the blocking lit anyways
+              // not really neccessary
+              j[-1].blit = other;
+              
+              // Similar code is in the implementation of the SAT'18 paper on
+              // chronological backtracking but in our experience, this code
+              // first does not really seem to be necessary for correctness,
+              // and further does not improve running time either.
+              //
+              if (opts.chrono > 1) {  // ... always do some variant ...
+  
+                const int other_level = var (other).level;
+    
+                if (other_level > var (lit).level) {
+    
+                  // The assignment level of the new unit 'other' is larger
+                  // than the assignment level of 'lit'.  Thus we should find
+                  // another literal in the clause at that higher assignment
+                  // level and watch that instead of 'lit'.
+    
+                  assert (size > 2);
+    
+                  int pos, s = 0;
+    
+                  for (pos = 2; pos < size; pos++)
+                    if (var (s = lits[pos]).level == other_level)
+                      break;
+    
+                  assert (s);
+                  assert (pos < size);
+    
+                  LOG (w.clause, "unwatch %d in", lit);
+                  lits[pos] = lit;
+                  lits[0] = other;
+                  lits[1] = s;
+                  watch_literal (s, other, w.clause);
+    
+                  j--;  // Drop this watch from the watch list of 'lit'.
+                }
+              }
+            } else {
+  
+              assert (u < 0);
+              assert (v < 0);
+  
+              // The other watch is assigned false ('u < 0') and all other
+              // literals as well (still 'v < 0'), thus we found a conflict.
+  
+              conflict = w.clause;
+              break;
+            }
           }
         }
       }
+
+      if (j != i) {
+  
+        while (i != eow)
+          *j++ = *i++;
+  
+        ws.resize (j - ws.begin ());
+      }
     }
-
-    if (j != i) {
-
-      while (i != eow)
-        *j++ = *i++;
-
-      ws.resize (j - ws.begin ());
-    }
-  }
-
-  if (searching_lucky_phases) {
-
-    if (conflict)
-      LOG (conflict, "ignoring lucky conflict");
-
-  } else {
-
-    // Avoid updating stats eagerly in the hot-spot of the solver.
-    //
-    stats.propagations.search += propagated - before;
-
-    if (!conflict) no_conflict_until = propagated;
-    else {
-
-      if (stable) stats.stabconflicts++;
-      stats.conflicts++;
-
-      LOG (conflict, "conflict");
-
-      // The trail before the current decision level was conflict free.
+    set_propagated (proplevel, current);
+    if (searching_lucky_phases) {
+  
+      if (conflict)
+        LOG (conflict, "ignoring lucky conflict");
+  
+    } else {
+  
+      // Avoid updating stats eagerly in the hot-spot of the solver.
       //
-      no_conflict_until = control[level].trail;
+      stats.propagations.search += propagated - before;
+  
+      if (!conflict) no_conflict_until = propagated;
+      else {
+  
+        if (stable) stats.stabconflicts++;
+        stats.conflicts++;
+  
+        LOG (conflict, "conflict");
+  
+        // The trail before the current decision level was conflict free.
+        //
+        no_conflict_until = control[level].trail;
+      }
     }
   }
+
 
   STOP (propagate);
 

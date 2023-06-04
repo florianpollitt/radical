@@ -49,7 +49,7 @@ void Internal::trail_push (int lit, int l) {
 
 int Internal::next_propagation_level (int last) {
   if (!opts.multitrail) {
-    return - (!(propagated == trail.size ()));
+    return - (propagated == trail.size ());
   }
   if (last == -1 && propagated < trail.size ())
     return 0;
@@ -99,6 +99,15 @@ int Internal::conflicting_level (Clause * c) {
     l = l < ll ? ll : l;
   }
   return l;
+}
+
+void Internal::set_propagated (int l, int prop) {
+  if (!opts.multitrail || l == 0) {
+    propagated = prop;
+    return;
+  }
+  multitrail[l-1] = prop;
+  
 }
 
 }

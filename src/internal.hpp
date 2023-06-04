@@ -952,6 +952,8 @@ struct Internal {
     int next_propagated (int l);
     Clause * propagation_conflict (int l, Clause * c);
     int conflicting_level (Clause * c);
+    void elevate_lit (int lit, Clause * reason);
+    void set_propagated (int l, int prop);
       
     
     // Hyper ternary resolution.
