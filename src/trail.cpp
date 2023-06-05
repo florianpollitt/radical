@@ -10,6 +10,7 @@ void Internal::new_trail_level (int lit) {
   if (!opts.multitrail) return;
   assert (opts.multitrail);
   multitrail.push_back (0);
+  control.back ().trail = 0;
   trails.push_back (new vector<int> ());
   assert (level == (int) trails.size ());
 }
@@ -47,6 +48,9 @@ void Internal::trail_push (int lit, int l) {
   trails[l-1]->push_back (lit);
 }
 
+
+// returns the next level that needs to be propagated
+//
 int Internal::next_propagation_level (int last) {
   if (!opts.multitrail) {
     return - (propagated == trail.size ());
@@ -63,6 +67,8 @@ int Internal::next_propagation_level (int last) {
   return -1;
 }
 
+// returns the trail that needs to be propagated
+//
 vector<int> * Internal::next_trail (int l) {
   if (!opts.multitrail || l <= 0) {
     return &trail;
@@ -71,6 +77,8 @@ vector<int> * Internal::next_trail (int l) {
   return trails[l-1];
 }
 
+// returns the point from which the trail is propagated
+//
 int Internal::next_propagated (int l) {
   if (l < 0) return 0;
   if (!opts.multitrail || l == 0) {
@@ -80,6 +88,9 @@ int Internal::next_propagated (int l) {
   return multitrail[l-1];
 }
 
+// without opts.multitrailrepair returns c, else
+// returns a conflict of conflicting_level at most l
+//
 Clause * Internal::propagation_conflict (int l, Clause * c) {
   if (!opts.multitrailrepair)
     return c;
@@ -97,6 +108,8 @@ Clause * Internal::propagation_conflict (int l, Clause * c) {
   return 0;
 }
 
+// returns the lowest level within some conflicting clause
+//
 int Internal::conflicting_level (Clause * c) {
   int l = 0;
   for (auto & lit : *c) {
@@ -106,6 +119,8 @@ int Internal::conflicting_level (Clause * c) {
   return l;
 }
 
+// updates propagated for the current level
+//
 void Internal::set_propagated (int l, int prop) {
   if (!opts.multitrail || l == 0) {
     propagated = prop;

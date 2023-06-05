@@ -77,7 +77,8 @@ void Internal::backtrack (int new_level) {
   stats.backtracks++;
   update_target_and_best ();
 
-  if (opts.multitrail) {
+  // sometimes we do not use multitrail even with option enabled e.g. in probe
+  if (opts.multitrail && !trails.empty ()) {
     multi_backtrack (new_level);
     return;
   }
@@ -137,9 +138,13 @@ void Internal::multi_backtrack (int new_level) {
 
   int elevated = 0, unassigned = 0;
 
-  for (int i = new_level; i <= level; i++) {   // unsave for level = INT_MAX
+  for (int i = new_level; i <= level; i++) {   // unsafe for level = INT_MAX
     vector<int>* t = trails[i];
     for (auto & lit : *t) {
+      if (!lit) {
+        LOG ("empty space on trail level %d", v.level);
+        continue;
+      }
       Var & v = var (lit);
       if (v.level == i) {
         unassign (lit);
@@ -149,7 +154,7 @@ void Internal::multi_backtrack (int new_level) {
         // after intelsat paper from 2022
         LOG ("elevated literal %d on level %d", lit, v.level);
         assert (opts.chrono);
-        assert (opts.multitrailrepair);
+        assert (opts.multitrailrepair && opts.multitrail);
         elevated++;
       }
     }

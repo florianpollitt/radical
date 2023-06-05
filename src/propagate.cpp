@@ -230,7 +230,7 @@ bool Internal::propagate () {
     vector<int> * t = next_trail (proplevel);
     int64_t before = next_propagated (proplevel);
     size_t current = before;
-    const bool repairing = opts.multitrailrepair;
+    const bool repairing = opts.multitrailrepair && opts.multitrail;
     
     while (!conflict && current != t->size ()) {
       assert (opts.multitrail || t == &trail);
