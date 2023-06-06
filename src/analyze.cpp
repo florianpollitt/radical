@@ -537,10 +537,12 @@ inline int Internal::determine_actual_backtrack_level (int jump) {
     LOG ("back-jumping over %d > %d levels prohibited"
       "thus backtracking chronologically to level %d",
       level - jump, opts.chronolevelim, res);
-  } else if (opts.chronoreusetrail) {
+  } else if (opts.chronoreusetrail && !opts.multitrail) {
+    // I think this makes no sense for multitrail...
 
     int best_idx = 0, best_pos = 0;
 
+    // TODO: multitrail -> iterate over level and then trail...
     if (use_scores ()) {
       for (size_t i = control[jump + 1].trail; i < trail.size (); i++) {
         const int idx = abs (trail[i]);
@@ -548,6 +550,18 @@ inline int Internal::determine_actual_backtrack_level (int jump) {
         best_idx = idx;
         best_pos = i;
       }
+      /*
+      for (int l = jump + 1; l < level; l++) {
+        const vector<int> t = *next_trail (l);
+        for (size_t i = control[l].trail; i < t.size (); i++) {
+          const auto idx = abs (t[i]);
+          if (best_idx && !score_smaller (this) (best_idx, idx)) continue;
+          best_idx = idx;
+          best_pos = i;
+        }
+        if (!opts.multitrail) break;
+      }
+      */
       LOG ("best variable score %g", score (best_idx));
     } else {
       for (size_t i = control[jump + 1].trail; i < trail.size (); i++) {
@@ -556,6 +570,17 @@ inline int Internal::determine_actual_backtrack_level (int jump) {
         best_idx = idx;
         best_pos = i;
       }
+      /*
+      for (int l = jump + 1; l < level; l++) {
+        const vector<int> t = *next_trail (l);
+        for (size_t i = control[l].trail; i < t.size (); i++) {
+          const auto idx = abs (t[i]);
+          if (best_idx && bumped (best_idx) >= bumped (idx)) continue;
+          best_idx = idx;
+          best_pos = i;
+        }
+        if (!opts.multitrail) break;
+      */
       LOG ("best variable bumped %" PRId64 "", bumped (best_idx));
     }
     assert (best_idx);
@@ -735,7 +760,11 @@ void Internal::analyze () {
   assert (clause.empty ());
   assert (lrat_chain.empty ());
 
-  int i = trail.size ();        // Start at end-of-trail.
+  // for multitrail we only need to analyze the trail with the conflicting level
+  // which is also level because we backtracked earlier.
+
+  vector<int> t = *next_trail (level);
+  int i = t.size ();            // Start at end-of-trail.
   int open = 0;                 // Seen but not processed on this level.
   int uip = 0;                  // The first UIP literal.
 
@@ -744,7 +773,7 @@ void Internal::analyze () {
     uip = 0;
     while (!uip) {
       assert (i > 0);
-      const int lit = trail[--i];
+      const int lit = t[--i];
       if (!flags (lit).seen) continue;
       if (var (lit).level == level) uip = lit;
     }
@@ -778,9 +807,9 @@ void Internal::analyze () {
   //
   if (size > 1) {
     if (opts.shrink)
-      shrink_and_minimize_clause ();
+      shrink_and_minimize_clause (); // ... TODO
     else if (opts.minimize)
-      minimize_clause ();
+      minimize_clause ();            // ... TODO
 
     size = (int) clause.size ();
 

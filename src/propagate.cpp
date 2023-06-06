@@ -529,7 +529,9 @@ bool Internal::propagate () {
 
   STOP (propagate);
 
-  // test_watch_invariant ();
+#ifndef NDEBUG
+  test_watch_invariant ();
+#endif
   return !conflict;
 }
 

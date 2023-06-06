@@ -142,7 +142,7 @@ void Internal::multi_backtrack (int new_level) {
     vector<int>* t = trails[i];
     for (auto & lit : *t) {
       if (!lit) {
-        LOG ("empty space on trail level %d", v.level);
+        LOG ("empty space on trail level %d", i);
         continue;
       }
       Var & v = var (lit);
