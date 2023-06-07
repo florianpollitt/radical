@@ -101,6 +101,7 @@ inline void Internal::elevate_lit (int lit, Clause * reason) {
   assert (reason);
   Var & v = var (idx);
   const int lit_level = elevating_level (lit, reason);
+  if (lit_level >= v.level) return;
   assert (lit_level < v.level);
   LOG (reason, "elevated %d @ %d to %d", lit, v.level, lit_level);
   v.level = lit_level;
@@ -390,9 +391,12 @@ bool Internal::propagate () {
                 }
               }
               if (!multisat && unisatrepair) {
+                // TODO: sometimes we do not need to elevate...
                 // fix reimplication by elevating r
                 elevate_lit (r, w.clause);
                 multisat = other;                // maybe lit?
+                // if other level < r level we might have to change
+                // other watch which is a lot of work... TODO
               }
               if (multisat) {
                 // replace watch
@@ -478,21 +482,12 @@ bool Internal::propagate () {
             } else if (u > 0) {
               assert (v < 0);
               assert (multisat);
-              // other is the only assigned literal in w.clause
-              // so we possibly need to elevate other and then
-              // maybe find a replacement for watch lit
-              
-              // level of other and highest level in clause (apart from other)
-              int other_level = var (other).level;
-              const int elevate = elevating_level (other, w.clause);
 
-              // if other is higher than highest level we elevate
-              if (elevate < other_level) {
-                elevate_lit (other, w.clause);
-              }
-              
+              // we might have to elevate...
+              elevate_lit (other, w.clause);
+
               // now other_level might have changed
-              other_level = var (other).level;
+              int other_level = var (other).level;
               
               // if we elevated to proplevel we can just change blit to other
               assert (other_level >= proplevel);
