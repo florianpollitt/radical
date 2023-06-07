@@ -395,8 +395,6 @@ bool Internal::propagate () {
                 // fix reimplication by elevating r
                 elevate_lit (r, w.clause);
                 multisat = other;                // maybe lit?
-                // if other level < r level we might have to change
-                // other watch which is a lot of work... TODO
               }
               if (multisat) {
                 // replace watch
@@ -412,7 +410,38 @@ bool Internal::propagate () {
               } else
                 // Replacement satisfied, so just replace 'blit'.  
                 j[-1].blit = r;
-  
+                
+              if (var (r).level > var (other).level) {
+                assert (false);     // can this even happen???
+                // if other level < r level we might have to change
+                // other watch which is a lot of work... TODO
+                // I think this is necessary though...
+                
+                // delete other watch
+                // find literal in clause with level <= level of r
+                // watch literal, r, w.clause
+                remove_watch (watches (other), w.clause);
+                if (var (r).level == proplevel) {
+                  watch_literal (lit, r, w.clause);
+                } else {                   // otherwise we search for a new watch
+                  int pos, s = 0;          // which is guaranteed to exist because
+                                           // of elevation.
+                  for (pos = 2; pos < size; pos++) {
+                    if (var (s = lits[pos]).level == var (other).level)
+                      break;
+                  }
+                  assert (s);
+                  assert (pos < size);
+                    
+                  LOG (w.clause, "unwatch %d in", lit);
+                  lits[pos] = lit;
+                  lits[0] = other;
+                  lits[1] = s;
+                  watch_literal (s, other, w.clause);
+      
+                  j--;  // Drop this watch from the watch list of 'lit'.
+                }
+              }
             } else if (!v) {
   
               // Found new unassigned replacement literal to be watched.
