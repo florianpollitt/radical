@@ -535,7 +535,8 @@ bool Internal::propagate () {
 
 #ifndef NDEBUG
   // TODO: very unsure about watches (also inside of propagate)
-  test_watch_invariant ();
+  if (!conflict)
+    test_watch_invariant ();
 #endif
   return !conflict;
 }

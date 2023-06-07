@@ -102,6 +102,7 @@ void Internal::test_watch_invariant () {
     if ((size_t) var (lit).trail >= propagated - 1) continue;
     for (auto w : ws) {
       if (w.clause->garbage) continue;
+      // if (w.clause == conflict) continue;
       // int blit = w.blit;
       LOG (w.clause, "watch lit %d, blit %d, ", lit, w.blit);
       // does not hold for opts.chrono of course...
