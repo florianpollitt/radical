@@ -378,8 +378,17 @@ bool Internal::propagate () {
             assert (lits + 2 <= k), assert (k <= w.clause->end ());
   
             if (v > 0) {
-              bool unisatrepair = repairing && var (r).level > proplevel;
-              if (!multisat && unisatrepair) {
+              // check if w.clause is unisat
+              // if it is elevate literal
+              // fix watches
+              // the watch for lit has to be changed in case
+              // var (lit).level < var (x).level for all positively assigned
+              // literals x.
+              // for other similarly, but only if var (other).level <= proplevel
+              // and if var (other).level == proplevel then only if
+              // var (other).trail < var (lit).trail
+              // there is a high chance that this cannot happen...
+              if (!multisat && repairing) {
                 literal_iterator j = lits;
                 for (; j < end; j++) {
                   int literal = *j;
@@ -390,9 +399,8 @@ bool Internal::propagate () {
                   break;
                 }
               }
-              if (!multisat && unisatrepair) {
-                // TODO: sometimes we do not need to elevate...
-                // fix reimplication by elevating r
+              if (!multisat && repairing) {
+                // potentially elevating r...
                 elevate_lit (r, w.clause);
                 multisat = other;                // maybe lit?
               }
