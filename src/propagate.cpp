@@ -489,21 +489,26 @@ bool Internal::propagate () {
                 elevate_lit (other, w.clause);
               }
               other_level = var (other).level;
-              int pos, s = 0;
-              for (pos = 2; pos < size; pos++)
-                if (var (s = lits[pos]).level == other_level)
-                  break;
-              assert (s);
-              assert (pos < size);
-                
-              LOG (w.clause, "unwatch %d in", lit);
-              lits[pos] = lit;
-              lits[0] = other;
-              lits[1] = s;
-              watch_literal (s, other, w.clause);
-
-              j--;  // Drop this watch from the watch list of 'lit'.
-
+              if (other_level == proplevel) {
+                j[-1].blit = other;
+              }
+              else {
+                int pos, s = 0;
+                for (pos = 2; pos < size; pos++) {
+                  if (var (s = lits[pos]).level == other_level)
+                    break;
+                }
+                assert (s);
+                assert (pos < size);
+                  
+                LOG (w.clause, "unwatch %d in", lit);
+                lits[pos] = lit;
+                lits[0] = other;
+                lits[1] = s;
+                watch_literal (s, other, w.clause);
+    
+                j--;  // Drop this watch from the watch list of 'lit'.
+              }
             } else {
               
               assert (u < 0);
