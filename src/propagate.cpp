@@ -497,7 +497,8 @@ bool Internal::propagate () {
     // LOG ("PROPAGATION set conflict");
     if (!conflict)
       conflict = propagation_conflict (proplevel, 0);
-    if (conflict) conflicts.clear ();
+    // if (conflict) 
+    conflicts.clear ();
     if (searching_lucky_phases) {
   
       if (conflict)
