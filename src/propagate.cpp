@@ -478,22 +478,29 @@ bool Internal::propagate () {
             } else if (u > 0) {
               assert (v < 0);
               assert (multisat);
-              // TODO: BUG: somehow gets here when u > 0 and we need to reimply
-              // TODO: potentially change watches.
-              // and possibly fix missed implication by elevating
+              // other is the only assigned literal in w.clause
+              // so we possibly need to elevate other and then
+              // maybe find a replacement for watch lit
               
+              // level of other and highest level in clause (apart from other)
               int other_level = var (other).level;
               const int elevate = elevating_level (other, w.clause);
 
+              // if other is higher than highest level we elevate
               if (elevate < other_level) {
                 elevate_lit (other, w.clause);
               }
+              
+              // now other_level might have changed
               other_level = var (other).level;
+              
+              // if we elevated to proplevel we can just change blit to other
+              assert (other_level >= proplevel);
               if (other_level == proplevel) {
                 j[-1].blit = other;
-              }
-              else {
-                int pos, s = 0;
+              } else {                   // otherwise we search for a new watch
+                int pos, s = 0;          // which is guaranteed to exist because
+                                         // of elevation.
                 for (pos = 2; pos < size; pos++) {
                   if (var (s = lits[pos]).level == other_level)
                     break;
