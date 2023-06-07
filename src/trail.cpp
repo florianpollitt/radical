@@ -92,7 +92,7 @@ int Internal::next_propagated (int l) {
 // returns a conflict of conflicting_level at most l
 //
 Clause * Internal::propagation_conflict (int l, Clause * c) {
-  if (!opts.multitrailrepair)
+  if (!(opts.multitrailrepair && opts.multitrail))
     return c;
   if (c)
     conflicts.push_back (c);
@@ -114,12 +114,14 @@ Clause * Internal::propagation_conflict (int l, Clause * c) {
 //
 int Internal::conflicting_level (Clause * c) {
   int l = 0;
-  for (auto & lit : *c) {
+  for (const auto & lit : *c) {
     const int ll = var (lit).level;
     l = l < ll ? ll : l;
   }
   return l;
 }
+
+
 
 // updates propagated for the current level
 //

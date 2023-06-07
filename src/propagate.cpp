@@ -81,15 +81,26 @@ void Internal::build_chain_for_empty () {
 }
 
 /*------------------------------------------------------------------------*/
+inline int Internal::elevating_level (int lit, Clause * reason) {
+  int l = 0;
+  for (const auto & literal : *reason) {
+    if (literal == lit) continue;
+    assert (val (literal) < 0);
+    const int ll = var (literal).level;
+    l = l < ll ? ll : l;
+  }
+  return l;
+
+}
+
+/*------------------------------------------------------------------------*/
 
 inline void Internal::elevate_lit (int lit, Clause * reason) {
-  // TODO: potentially update next, before in var
-  // not yet decided wether or not i need them for conflict analysis
   const int idx = vidx (lit);
   assert (vals[idx]);
   assert (reason);
   Var & v = var (idx);
-  const int lit_level = conflicting_level (reason);
+  const int lit_level = elevating_level (lit, reason);
   assert (lit_level < v.level);
   LOG (reason, "elevated %d @ %d to %d", lit, v.level, lit_level);
   v.level = lit_level;
