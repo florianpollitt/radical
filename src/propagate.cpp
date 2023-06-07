@@ -376,9 +376,6 @@ bool Internal::propagate () {
   
             assert (lits + 2 <= k), assert (k <= w.clause->end ());
   
-            // if (v > 0 && !repair) {
-            // TODO: potentially change watches.
-            // and possibly fix missed implication by elevating
             if (v > 0) {
               bool unisatrepair = repairing && var (r).level > proplevel;
               if (!multisat && unisatrepair) {
@@ -478,8 +475,37 @@ bool Internal::propagate () {
                   j--;  // Drop this watch from the watch list of 'lit'.
                 }
               }
+            } else if (u > 0) {
+              assert (v < 0);
+              assert (multisat);
+              // TODO: BUG: somehow gets here when u > 0 and we need to reimply
+              // TODO: potentially change watches.
+              // and possibly fix missed implication by elevating
+              
+              int other_level = var (other).level;
+              const int elevate = elevating_level (other, w.clause);
+
+              if (elevate < other_level) {
+                elevate_lit (other, w.clause);
+              }
+              other_level = var (other).level;
+              int pos, s = 0;
+              for (pos = 2; pos < size; pos++)
+                if (var (s = lits[pos]).level == other_level)
+                  break;
+              assert (s);
+              assert (pos < size);
+                
+              LOG (w.clause, "unwatch %d in", lit);
+              lits[pos] = lit;
+              lits[0] = other;
+              lits[1] = s;
+              watch_literal (s, other, w.clause);
+
+              j--;  // Drop this watch from the watch list of 'lit'.
+
             } else {
-  
+              
               assert (u < 0);
               assert (v < 0);
   
