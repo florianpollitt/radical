@@ -96,6 +96,7 @@ Clause * Internal::propagation_conflict (int l, Clause * c) {
     return c;
   if (c)
     conflicts.push_back (c);
+  if (conflicts.empty ()) return 0;
   int conf = conflicting_level (c);
   for (auto cl : conflicts) {
     int ccl = conflicting_level (cl);

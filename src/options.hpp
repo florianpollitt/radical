@@ -49,7 +49,7 @@ OPTION( compact,           1,  0,  1,0,1,0,1, "compact internal variables") \
 OPTION( compactint,      2e3,  1,2e9,0,0,0,1, "compacting interval") \
 OPTION( compactlim,      1e2,  0,1e3,0,0,0,1, "inactive limit per mille") \
 OPTION( compactmin,      1e2,  1,2e9,0,0,0,1, "minimum inactive limit") \
-OPTION( condition,         0,  0,  1,0,0,0,1, "globally blocked clause elim") \
+OPTION( condition,         0,  0,  0,0,0,0,1, "globally blocked clause elim") \
 OPTION( conditionint,    1e4,  1,2e9,0,0,0,1, "initial conflict interval") \
 OPTION( conditionmaxeff, 1e7,  0,2e9,1,0,0,1, "maximum condition efficiency") \
 OPTION( conditionmaxrat, 100,  1,2e9,1,0,0,1, "maximum clause variable ratio") \
@@ -110,8 +110,8 @@ OPTION( lratfrat,          0,  0,  1,0,0,0,1, "use frat proof format") \
 OPTION( lucky,             1,  0,  1,0,0,0,1, "search for lucky phases") \
 OPTION( minimize,          1,  0,  1,0,0,0,1, "minimize learned clauses") \
 OPTION( minimizedepth,   1e3,  0,1e3,0,0,0,1, "minimization depth") \
-OPTION( multitrail,        0,  0,  0,0,0,0,1, "separate trail for each level") \
-OPTION( multitrailrepair,  0,  0,  0,0,0,0,1, "repair assignment order") \
+OPTION( multitrail,        1,  0,  1,0,0,0,1, "separate trail for each level") \
+OPTION( multitrailrepair,  1,  0,  1,0,0,0,1, "repair assignment order") \
 OPTION( phase,             1,  0,  1,0,0,0,1, "initial phase") \
 OPTION( probe,             1,  0,  1,0,1,0,1, "failed literal probing" ) \
 OPTION( probehbr,          1,  0,  1,0,0,0,1, "learn hyper binary clauses") \
@@ -146,7 +146,7 @@ OPTION( reverse,           0,  0,  1,0,0,0,1, "reverse variable ordering") \
 OPTION( score,             1,  0,  1,0,0,0,1, "use EVSIDS scores") \
 OPTION( scorefactor,     950,500,1e3,0,0,0,1, "score factor per mille") \
 OPTION( seed,              0,  0,2e9,0,0,0,1, "random seed") \
-OPTION( shrink,            3,  0,  3,0,0,0,1, "shrink conflict clause") \
+OPTION( shrink,            0,  0,  0,0,0,0,1, "shrink conflict clause") \
 OPTION( shrinkreap,        1,  0,  1,0,0,0,1, "use a reap for shrinking") \
 OPTION( shuffle,           0,  0,  1,0,0,0,1, "shuffle variables") \
 OPTION( shufflequeue,      1,  0,  1,0,0,0,1, "shuffle variable queue") \

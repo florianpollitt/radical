@@ -138,15 +138,18 @@ void Internal::multi_backtrack (int new_level) {
 
   int elevated = 0, unassigned = 0;
 
-  for (int i = new_level; i <= level; i++) {   // unsafe for level = INT_MAX
+  for (int i = new_level; i < level; i++) {   // unsafe for level = INT_MAX
+    int l = i+1;
+    LOG ("unassigning level %d", l);
     vector<int>* t = trails[i];
     for (auto & lit : *t) {
+      LOG ("unassigning literal %d", lit);
       if (!lit) {
-        LOG ("empty space on trail level %d", i);
+        LOG ("empty space on trail level %d", l);
         continue;
       }
       Var & v = var (lit);
-      if (v.level == i) {
+      if (v.level == l) {
         unassign (lit);
         unassigned++;
         trailsize--;

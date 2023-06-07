@@ -222,8 +222,9 @@ bool Internal::propagate () {
   
   int proplevel = -1;
   
-  LOG ("PROPAGATION");
+  // LOG ("PROPAGATION");
   while (proplevel < level) {
+    // LOG ("PROPAGATION outer loop");
     proplevel = next_propagation_level (proplevel);
     if (proplevel < 0) break;
     LOG ("PROPAGATION on level %d", proplevel);
@@ -489,9 +490,11 @@ bool Internal::propagate () {
   
         ws.resize (j - ws.begin ());
       }
-      LOG ("PROPAGATION end loop with current %ld, trail %zd", current, t->size ());
+      // LOG ("PROPAGATION end loop with current %ld, trail %zd", current, t->size ());
     }
+    // LOG ("PROPAGATION set propagated");
     set_propagated (proplevel, current);
+    // LOG ("PROPAGATION set conflict");
     if (!conflict)
       conflict = propagation_conflict (proplevel, 0);
     if (conflict) conflicts.clear ();
@@ -526,10 +529,12 @@ bool Internal::propagate () {
     if (conflict) break;
   }
 
+  // LOG ("PROPAGATION stop");
 
   STOP (propagate);
 
 #ifndef NDEBUG
+  // TODO: very unsure about watches (also inside of propagate)
   test_watch_invariant ();
 #endif
   return !conflict;

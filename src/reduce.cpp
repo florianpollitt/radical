@@ -145,6 +145,12 @@ void Internal::mark_useless_redundant_clauses_as_garbage () {
 
 bool Internal::propagate_out_of_order_units () {
   if (!level) return true;
+  if (opts.multitrail) {
+    backtrack (0);
+    if (propagate ()) return true;
+    learn_empty_clause ();
+    return false;
+  }
   int oou = 0;
   for (size_t i = control[1].trail; !oou && i < trail.size (); i++) {
     const int lit = trail[i];

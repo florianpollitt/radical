@@ -147,6 +147,7 @@ struct less_conditioned {
 // triggered during CDCL search according to 'conditioning' above and uses
 // the current assignment as basis to find globally blocked clauses.
 
+// TODO: multitrail
 long Internal::condition_round (long delta) {
 
   long limit, props = 0;
