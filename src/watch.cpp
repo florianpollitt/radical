@@ -96,6 +96,10 @@ void Internal::sort_watches () {
 }
 
 void Internal::test_watch_invariant () {
+  // does not hold for opts.chrono of course...
+  // but with repair we should fix it
+  const bool repairing = opts.multitrailrepair && opts.multitrail;
+  if (opts.chrono > 0 && !repairing) return;
   for (auto lit : lits) {
     Watches & ws = watches (lit);
     // last literal might not be propagated to completion
@@ -105,7 +109,6 @@ void Internal::test_watch_invariant () {
       // if (w.clause == conflict) continue;
       // int blit = w.blit;
       LOG (w.clause, "watch lit %d, blit %d, ", lit, w.blit);
-      // does not hold for opts.chrono of course...
       int witness = 0;
       for (const auto & ok : * w.clause) {
         if (val (ok) > 0) {
@@ -114,8 +117,7 @@ void Internal::test_watch_invariant () {
           }
         }
       }
-      assert (opts.chrono > 0 ||
-              (val (lit) >= 0 || witness));
+      assert (val (lit) >= 0 || witness);
     }
   }
 }

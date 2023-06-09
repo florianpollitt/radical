@@ -402,7 +402,8 @@ bool Internal::propagate () {
               if (!multisat && repairing) {
                 // potentially elevating r...
                 elevate_lit (r, w.clause);
-                multisat = other;                // maybe lit?
+                multisat = other;        // instead we could search for a better
+                                         // blit (one with level == r.level)
               }
               if (multisat) {
                 // replace watch
@@ -419,6 +420,7 @@ bool Internal::propagate () {
                 // Replacement satisfied, so just replace 'blit'.  
                 j[-1].blit = r;
                 
+                /*
               if (var (r).level > var (other).level) {
                 assert (false);     // can this even happen???
                 // if other level < r level we might have to change
@@ -450,6 +452,7 @@ bool Internal::propagate () {
                   j--;  // Drop this watch from the watch list of 'lit'.
                 }
               }
+                */
             } else if (!v) {
   
               // Found new unassigned replacement literal to be watched.
@@ -485,7 +488,9 @@ bool Internal::propagate () {
               // first does not really seem to be necessary for correctness,
               // and further does not improve running time either.
               //
-              if (opts.chrono > 1) {  // ... always do some variant ...
+              // this is actually necessary to preserve the invariant for
+              // opt.multitrailrepair
+              if (repairing || opts.chrono > 1) {  // ... always do some variant ...
   
                 const int other_level = var (other).level;
     
@@ -534,7 +539,7 @@ bool Internal::propagate () {
                 int pos, s = 0;          // which is guaranteed to exist because
                                          // of elevation.
                 for (pos = 2; pos < size; pos++) {
-                  if (var (s = lits[pos]).level == other_level)
+                  if (var (s = lits[pos]).level >= other_level)
                     break;
                 }
                 assert (s);
@@ -578,37 +583,40 @@ bool Internal::propagate () {
     // LOG ("PROPAGATION set conflict");
     if (!conflict)
       conflict = propagation_conflict (proplevel, 0);
-    // if (conflict) 
-    conflicts.clear ();
-    if (searching_lucky_phases) {
-  
-      if (conflict)
-        LOG (conflict, "ignoring lucky conflict");
-  
-    } else {
-  
-      // Avoid updating stats eagerly in the hot-spot of the solver.
-      //
+    
+    if (!searching_lucky_phases) 
       stats.propagations.search += propagated - before;
-  
-      if (!conflict) {
-        no_conflict_level = proplevel;
-        no_conflict_until = next_propagated (proplevel);
-      } else {
-  
-        if (stable) stats.stabconflicts++;
-        stats.conflicts++;
-  
-        LOG (conflict, "conflict");
-  
-        // The trail before the current decision level was conflict free.
-        //
-        // TODO: opts.multitrail
-        no_conflict_until = control[level].trail;
-        no_conflict_level = proplevel - 1;
-      }
-    }
     if (conflict) break;
+  }
+  if (!conflict)
+    conflict = propagation_conflict (level, 0);
+  conflicts.clear ();
+  if (searching_lucky_phases) {
+
+    if (conflict)
+      LOG (conflict, "ignoring lucky conflict");
+
+  } else {
+
+    // Avoid updating stats eagerly in the hot-spot of the solver.
+    //
+
+    if (!conflict) {
+      no_conflict_level = level;
+      no_conflict_until = next_propagated (level);
+    } else {
+
+      if (stable) stats.stabconflicts++;
+      stats.conflicts++;
+
+      LOG (conflict, "conflict");
+
+      // The trail before the current decision level was conflict free.
+      //
+      // TODO: opts.multitrail
+      no_conflict_until = control[proplevel].trail;
+      no_conflict_level = proplevel - 1;
+    }
   }
 
   // LOG ("PROPAGATION stop");
