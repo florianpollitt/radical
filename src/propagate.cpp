@@ -245,7 +245,13 @@ bool Internal::propagate () {
     vector<int> * t = next_trail (proplevel);
     int64_t before = next_propagated (proplevel);
     size_t current = before;
-    const bool repairing = opts.multitrailrepair && opts.multitrail;
+    const bool ismultitrail = opts.multitrail; // opts.multitrailrepair &&
+                                            // seems like the watch invariant
+                                            // is actually necessary even without
+                                            // opts.multitrailrepair
+                                            // thus option opts.multitrail
+                                            // cannot be used on its own
+    const bool isrepairing = opts.multitrailrepair;
     
     while (!conflict && current != t->size ()) {
       assert (opts.multitrail || t == &trail);
@@ -267,9 +273,9 @@ bool Internal::propagate () {
         const Watch w = *j++ = *i++;
         const signed char b = val (w.blit);
         int l = var (w.blit).level;
-        bool repair = repairing && l > proplevel;
+        bool repair = ismultitrail && l > proplevel;
         int multisat = w.blit * (repair) * (b > 0);  // multitrailrepair mode
-  
+
         // if (b > 0 && !repair) continue;   // blocking literal satisfied
         if (b > 0 && !multisat) continue;   // blocking literal satisfied
   
@@ -339,7 +345,7 @@ bool Internal::propagate () {
           const int other = lits[0] ^ lits[1] ^ lit;
           const signed char u = val (other); // value of the other watch
           l = var (other).level;
-          repair = repairing && l > proplevel;
+          repair = ismultitrail && l > proplevel;
           multisat = other * (repair) * (u > 0);  // multitrailrepair mode
   
           if (u > 0 && !multisat) j[-1].blit = other; // satisfied, just replace blit
@@ -390,7 +396,7 @@ bool Internal::propagate () {
               // and if var (other).level == proplevel then only if
               // var (other).trail < var (lit).trail
               // there is a high chance that this cannot happen...
-              if (!multisat && repairing) {
+              if (!multisat && ismultitrail) {
                 literal_iterator j = lits;
                 for (; j < end; j++) {
                   int literal = *j;
@@ -401,7 +407,7 @@ bool Internal::propagate () {
                   break;
                 }
               }
-              if (!multisat && repairing) {
+              if (!multisat && ismultitrail) {
                 // potentially elevating r...
                 elevate_lit (r, w.clause);
                 multisat = other;        // instead we could search for a better

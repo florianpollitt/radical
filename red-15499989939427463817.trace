@@ -1,0 +1,72 @@
+0 init
+1 set check 1
+2 set chronolevelim 0
+3 set multitrailrepair 0
+4 set phase 0
+5 set stabilizeint 1
+6 add 19
+7 add 17
+8 add 0
+9 add -16
+10 add -17
+11 add 0
+12 add 8
+13 add 13
+14 add 0
+15 add 9
+16 add -8
+17 add 20
+18 add 0
+19 add -16
+20 add -3
+21 add 0
+22 add 2
+23 add -14
+24 add 0
+25 add -15
+26 add 13
+27 add 0
+28 add 15
+29 add -9
+30 add 11
+31 add 0
+32 add 5
+33 add -10
+34 add 0
+35 add -15
+36 add 16
+37 add 0
+38 add -11
+39 add -6
+40 add 18
+41 add 0
+42 add 14
+43 add 6
+44 add 0
+45 add -11
+46 add 16
+47 add 0
+48 add -2
+49 add 10
+50 add -14
+51 add 0
+52 add 3
+53 add -18
+54 add 0
+55 add 7
+56 add -18
+57 add 8
+58 add 0
+59 add 18
+60 add -13
+61 add 0
+62 add -16
+63 add -6
+64 add 1
+65 add 0
+66 constrain -5
+67 constrain -4
+68 constrain 12
+69 constrain 0
+70 assume -7
+71 solve 0

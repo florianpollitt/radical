@@ -215,6 +215,7 @@ bool Internal::instantiate_candidate (int lit, Clause * c) {
     LOG ("instantiate unassign %d", other);
     trail.pop_back ();
     assert (val (other) > 0);
+    num_assigned--;
     vals[other] = vals[-other] = 0;
     // this is a variant of conflict analysis which is only needed for lrat
     if (!ok && inst_chain.size () && opts.lrat && !opts.lratexternal) {

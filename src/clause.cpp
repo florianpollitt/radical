@@ -305,6 +305,7 @@ void Internal::assign_original_unit (uint64_t id, int lit) {
   const unsigned uidx = vlit (lit);
   unit_clauses[uidx] = id;
   LOG ("original unit assign %d", lit);
+  num_assigned++;
   mark_fixed (lit);
   if (propagate ()) return;
   LOG ("propagation of original unit results in conflict");
