@@ -136,6 +136,8 @@ inline void Internal::search_assign (int lit, Clause * reason) {
   v.level = lit_level;
   v.trail = trail_size (lit_level);
   v.reason = reason;
+  assert ((int) num_assigned < max_var);
+  num_assigned++;
   if (!lit_level) learn_unit_clause (lit);  // increases 'stats.fixed'
   const signed char tmp = sign (lit);
   vals[idx] = tmp;
@@ -489,8 +491,10 @@ bool Internal::propagate () {
               // and further does not improve running time either.
               //
               // this is actually necessary to preserve the invariant for
-              // opt.multitrailrepair
-              if (repairing || opts.chrono > 1) {  // ... always do some variant ...
+              // opts.multitrailrepair. Also for multitrail, otherwise
+              // the watches break if we backtrack.
+              
+              if (opts.multitrail || opts.chrono > 1) {  // ... always do some variant ...
   
                 const int other_level = var (other).level;
     

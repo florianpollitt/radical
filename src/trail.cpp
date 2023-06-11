@@ -43,7 +43,6 @@ void Internal::trail_push (int lit, int l) {
     trail.push_back (lit);
     return;
   }
-  trailsize++;
   assert (l > 0 && trails.size () >= (size_t) l);
   trails[l-1]->push_back (lit);
 }

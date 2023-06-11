@@ -54,6 +54,8 @@ inline void Internal::vivify_assign (int lit, Clause * reason) {
   Var & v = var (idx);
   v.level = level;                      // required to reuse decisions
   v.trail = (int) trail.size ();        // used in 'vivify_better_watch'
+  assert ((int) num_assigned < max_var);
+  num_assigned++;
   v.reason = level ? reason : 0;        // for conflict analysis
   if (!level) learn_unit_clause (lit);
   const signed char tmp = sign (lit);

@@ -38,7 +38,7 @@ Internal::Internal ()
   no_conflict_level (0),
   unsat_constraint (false),
   marked_failed (true),
-  trailsize (0),
+  num_assigned (0),
   proof (0),
   checker (0),
   tracer (0),

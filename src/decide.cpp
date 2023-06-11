@@ -86,8 +86,8 @@ bool Internal::satisfied () {
       }
     }
   }
-  size_t assigned = trail.size () + trailsize; // this is not exact because
-  return (assigned >= (size_t) max_var);       // of potential elevated literals
+  size_t assigned = num_assigned; // this is not exact because
+  return (assigned == (size_t) max_var);       // of potential elevated literals
 }
 
 // Search for the next decision and assign it to the saved phase.  Requires

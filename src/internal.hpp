@@ -217,7 +217,7 @@ struct Internal {
 
   vector<size_t> multitrail;    // "propagated" for each level
   vector<vector<int>*> trails;  // all assignments on all levels
-  size_t trailsize;             // controls multitrail
+  size_t num_assigned;          // check for satisfied
 
   
   vector<int> probes;           // remaining scheduled probes
