@@ -100,11 +100,16 @@ void Internal::protect_reasons () {
     reason->reason = true;
     count++;
   }
+  int l = 0;
   for (auto & t : trails) {
+    l++;
+    assert (l <= level);
     for (auto & lit : *t) {
     if (!active (lit)) continue;
       assert (val (lit));
       Var & v = var (lit);
+      if (v.level < l) continue;
+      assert (v.level == l);
       assert (v.level > 0);
       Clause * reason = v.reason;
       if (!reason) continue;
@@ -139,11 +144,16 @@ void Internal::unprotect_reasons () {
     reason->reason = false;
     count++;
   }
+  int l = 0;
   for (auto & t : trails) {
+    l++;
+    assert (l <= level);
     for (auto & lit : *t) {
       if (!active (lit)) continue;
       assert (val (lit));
       Var & v = var (lit);
+      if (v.level < l) continue;
+      assert (v.level == l);
       assert (v.level > 0);
       Clause * reason = v.reason;
       if (!reason) continue;
@@ -242,10 +252,15 @@ void Internal::update_reason_references () {
     v.reason = d;
     count++;
   }
+  int l = 0;
   for (auto & t : trails) {
+    l++;
+    assert (l <= level);
     for (auto & lit : *t) {
       if (!active (lit)) continue;
       Var & v = var (lit);
+      if (v.level < l) continue;
+      assert (v.level == l);
       Clause * c = v.reason;
       if (!c) continue;
       LOG (c, "updating assigned %d reason", lit);

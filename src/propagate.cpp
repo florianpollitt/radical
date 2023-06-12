@@ -103,7 +103,12 @@ inline void Internal::elevate_lit (int lit, Clause * reason) {
   const int lit_level = elevating_level (lit, reason);
   if (lit_level >= v.level) return;
   assert (lit_level < v.level);
-  LOG (reason, "elevated %d @ %d to %d", lit, v.level, lit_level);
+  LOG (reason, "elevated %d @ %d to %d", lit, v.level, lit_level);  
+  if (!lit_level) {
+    build_chain_for_units (lit, reason);
+    learn_unit_clause (lit);  // increases 'stats.fixed'
+    reason = 0;
+  }
   v.level = lit_level;
   v.reason = reason;
   v.trail = trail_size (lit_level);
