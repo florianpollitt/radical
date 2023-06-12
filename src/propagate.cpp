@@ -199,6 +199,91 @@ void Internal::search_assign_driving (int lit, Clause * c) {
 
 /*------------------------------------------------------------------------*/
 
+// if we found multiple conflicts in the previous propagation we have to
+// process them in order to not miss any implications.
+// this entails fixing watches and possibly assigning or elevating literals.
+// Afterwards we propagate as usual.
+
+bool Internal::propagate_conflicts () {
+  if (conflicts.empty ()) return true;
+  assert (opts.multitrail);
+  
+  LOG ("propagating conflicts");
+
+  const auto eoc = conflicts.end ();
+  auto j = conflicts.begin ();
+  auto i = j;
+
+  while (i != eoc) {
+    Clause * c = *j++ = *i++;
+  
+    const literal_iterator lits = c->begin ();
+    const literal_iterator end = c->end ();
+    literal_iterator k = lits;
+
+    int first = 0, second = 0;
+    literal_iterator fpos, spos;
+    
+    // find first, second
+    for (; k < end; k++) {
+      const int lit = *k;
+      const char tmp = val (lit);
+      if (tmp < 0) continue;
+      if (!first) {
+        assert (tmp >= 0);
+        first = lit;
+        fpos = k;
+        continue;
+      }
+      second = lit;
+      spos = k;
+      break;
+    }
+    LOG (c, "first %d, second %d in", first, second);
+    if (!first) continue;        // still conflicting, might be impossible...
+    j--;                         // drop conflict, but fix watches
+    
+    if (!second) {     // either elevate or assign first (or maybe there was a
+                       // valid choice for second already, then elevate_lit
+                       // will do nothing.
+      if (val (first) > 0) elevate_lit (first, c);
+      else search_assign (first, c);
+      
+      int other_level = var (first).level;
+  
+      // now find valid choice for second...
+      for (spos = lits; spos < end; spos++)
+        if (*spos != first && var (second = *spos).level == other_level)
+          break;
+    }
+    assert (second);
+
+    // watch first and second instead
+    
+    unwatch_clause (c);
+    int f = c->literals[0];
+    int s = c->literals[1];
+    lits[0] = first;
+    lits[1] = second;
+    *fpos = f;
+    *spos = s;
+    watch_clause (c);
+    
+  }
+  conflicts.resize (j - conflicts.begin ());
+  
+  // after backtracking we are guaranteed at least one
+  // unassigned literals per conflict.
+  // assigning literals (the uip from conflict analysis and
+  // those during this routing) should not assign this literal to false
+  // so the following assertion should hold actually:
+
+  assert (conflicts.empty ());
+  return conflicts.empty ();
+}
+
+/*------------------------------------------------------------------------*/
+
 // The 'propagate' function is usually the hot-spot of a CDCL SAT solver.
 // The 'trail' stack saves assigned variables and is used here as BFS queue
 // for checking clauses with the negation of assigned variables for being in
@@ -231,27 +316,30 @@ bool Internal::propagate () {
 
   if (level) require_mode (SEARCH);
   assert (!unsat);
-  assert (conflicts.empty ());
   assert (!conflict);
   START (propagate);
 
-  // Updating statistics counter in the propagation loops is costly so we
-  // delay until propagation ran to completion.
-  //
+  // first we have to fix watches in the previous conflicts (and possibly
+  // assign or elevate literals)
+  
+  propagate_conflicts ();
   
   int proplevel = -1;
+
+  // Updating statistics counter in the propagation loops is costly so we
+  // delay until propagation ran to completion.
   
   // LOG ("PROPAGATION");
   while (proplevel < level) {
     // LOG ("PROPAGATION outer loop");
     proplevel = next_propagation_level (proplevel);
+    conflict = propagation_conflict (proplevel, 0);
     if (proplevel < 0) break;
     LOG ("PROPAGATION on level %d", proplevel);
     vector<int> * t = next_trail (proplevel);
     int64_t before = next_propagated (proplevel);
     size_t current = before;
     const bool ismultitrail = opts.multitrail; 
-    conflict = propagation_conflict (proplevel, 0);
     while (!conflict && current != t->size ()) {
       assert (opts.multitrail || t == &trail);
       LOG ("propagating level %d from %zd to %zd", proplevel, before, t->size ());
@@ -275,7 +363,6 @@ bool Internal::propagate () {
         bool repair = ismultitrail && l > proplevel;
         int multisat = w.blit * (repair) * (b > 0);  // multitrailrepair mode
 
-        // if (b > 0 && !repair) continue;   // blocking literal satisfied
         if (b > 0 && !multisat) continue;   // blocking literal satisfied
         
 
@@ -591,7 +678,7 @@ bool Internal::propagate () {
     set_propagated (proplevel, current);
     // LOG ("PROPAGATION set conflict");
     if (!conflict)
-      conflict = propagation_conflict (proplevel, 0);
+      conflict = propagation_conflict (-1, 0);
     
     if (!searching_lucky_phases) 
       stats.propagations.search += propagated - before;
@@ -599,7 +686,7 @@ bool Internal::propagate () {
   }
   if (!conflict)
     conflict = propagation_conflict (level, 0);
-  conflicts.clear ();
+  // conflicts.clear ();   // TODO: do smth with the conflicts -> i.e. propagating
   if (searching_lucky_phases) {
 
     if (conflict)
