@@ -108,6 +108,7 @@ inline void Internal::elevate_lit (int lit, Clause * reason) {
     build_chain_for_units (lit, reason);
     learn_unit_clause (lit);  // increases 'stats.fixed'
     reason = 0;
+    lrat_chain.clear ();
   }
   v.level = lit_level;
   v.reason = reason;
