@@ -87,11 +87,11 @@ int Internal::next_propagated (int l) {
   return multitrail[l-1];
 }
 
-// without opts.multitrailrepair returns c, else
+// without opts.multitrail returns c, else
 // returns a conflict of conflicting_level at most l
 //
 Clause * Internal::propagation_conflict (int l, Clause * c) {
-  if (!(opts.multitrailrepair && opts.multitrail))
+  if (!opts.multitrail)
     return c;
   if (c)
     conflicts.push_back (c);

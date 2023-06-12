@@ -157,7 +157,6 @@ void Internal::multi_backtrack (int new_level) {
         // after intelsat paper from 2022
         LOG ("elevated literal %d on level %d", lit, v.level);
         assert (opts.chrono);
-        assert (opts.multitrailrepair && opts.multitrail);
         elevated++;
       }
     }

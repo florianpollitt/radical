@@ -210,13 +210,12 @@ void Internal::search_assign_driving (int lit, Clause * c) {
 // propagation costs (2013 JAIR article by Ian Gent) at the expense of four
 // more bytes for each clause.
 
-// this propagation routine has three different modes:
-// normal, multitrail, multitrailrepair.
+// this propagation routine has two different modes:
+// normal, multitrailrepair.
 // especially with opts.chrono these behave differently
 // in normal mode everything we have only one trail which we propagate linearly
 // in multitrail mode we have one trail for each level where we propagate
-// literals bottom up for each level
-// in multitrailrepair mode we do the same but also differentiate conflicts
+// literals bottom up for each level. We also differentiate conflicts
 // and repair missed implications, which can lead to elevated literals
 
 // the differences are mostly hidden in trail.cpp -> TODO inline these
@@ -251,8 +250,6 @@ bool Internal::propagate () {
                                             // opts.multitrailrepair
                                             // thus option opts.multitrail
                                             // cannot be used on its own
-    const bool isrepairing = opts.multitrailrepair;
-    
     while (!conflict && current != t->size ()) {
       assert (opts.multitrail || t == &trail);
       LOG ("propagating level %d from %zd to %zd", proplevel, before, t->size ());
@@ -346,7 +343,7 @@ bool Internal::propagate () {
           const signed char u = val (other); // value of the other watch
           l = var (other).level;
           repair = ismultitrail && l > proplevel;
-          multisat = other * (repair) * (u > 0);  // multitrailrepair mode
+          multisat = other * (repair) * (u > 0);  // multitrail mode
   
           if (u > 0 && !multisat) j[-1].blit = other; // satisfied, just replace blit
           else {
@@ -497,8 +494,7 @@ bool Internal::propagate () {
               // and further does not improve running time either.
               //
               // this is actually necessary to preserve the invariant for
-              // opts.multitrailrepair. Also for multitrail, otherwise
-              // the watches break if we backtrack.
+              // opts.multitrail. otherwise the watches break if we backtrack.
               
               if (opts.multitrail || opts.chrono > 1) {  // ... always do some variant ...
   

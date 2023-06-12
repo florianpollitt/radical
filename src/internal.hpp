@@ -192,7 +192,7 @@ struct Internal {
   vector<Bins> big;             // binary implication graph
   vector<Watches> wtab;         // table of watches for all literals
   Clause * conflict;            // set in 'propagation', reset in 'analyze'
-  vector<Clause *> conflicts;   // set in propagate for opts.multitrailrepair
+  vector<Clause *> conflicts;   // set in propagate for opts.multitrail
   Clause * ignore;              // ignored during 'vivify_propagate'
   Clause * probe_reason;        // set during probing
   size_t propagated;            // next trail position to propagate

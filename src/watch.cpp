@@ -98,7 +98,7 @@ void Internal::sort_watches () {
 void Internal::test_watch_invariant () {
   // does not hold for opts.chrono of course...
   // but with repair we should fix it
-  const bool repairing = opts.multitrailrepair && opts.multitrail;
+  const bool repairing = opts.multitrail;
   if (opts.chrono > 0 && !repairing) return;
   for (auto lit : lits) {
     Watches & ws = watches (lit);
