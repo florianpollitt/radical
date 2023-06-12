@@ -244,12 +244,8 @@ bool Internal::propagate () {
     vector<int> * t = next_trail (proplevel);
     int64_t before = next_propagated (proplevel);
     size_t current = before;
-    const bool ismultitrail = opts.multitrail; // opts.multitrailrepair &&
-                                            // seems like the watch invariant
-                                            // is actually necessary even without
-                                            // opts.multitrailrepair
-                                            // thus option opts.multitrail
-                                            // cannot be used on its own
+    const bool ismultitrail = opts.multitrail; 
+    conflict = propagation_conflict (proplevel, 0);
     while (!conflict && current != t->size ()) {
       assert (opts.multitrail || t == &trail);
       LOG ("propagating level %d from %zd to %zd", proplevel, before, t->size ());
@@ -275,7 +271,8 @@ bool Internal::propagate () {
 
         // if (b > 0 && !repair) continue;   // blocking literal satisfied
         if (b > 0 && !multisat) continue;   // blocking literal satisfied
-  
+        
+
         if (w.binary ()) {
   
           // In principle we can ignore garbage binary clauses too, but that

@@ -100,6 +100,20 @@ void Internal::protect_reasons () {
     reason->reason = true;
     count++;
   }
+  for (auto & t : trails) {
+    for (auto & lit : *t) {
+    if (!active (lit)) continue;
+      assert (val (lit));
+      Var & v = var (lit);
+      assert (v.level > 0);
+      Clause * reason = v.reason;
+      if (!reason) continue;
+      LOG (reason, "protecting assigned %d reason %p", lit, (void*) reason);
+      assert (!reason->reason);
+      reason->reason = true;
+      count++;
+    }
+  }
   LOG ("protected %zd reason clauses referenced on trail", count);
   protected_reasons = true;
 }
@@ -124,6 +138,20 @@ void Internal::unprotect_reasons () {
     assert (reason->reason);
     reason->reason = false;
     count++;
+  }
+  for (auto & t : trails) {
+    for (auto & lit : *t) {
+      if (!active (lit)) continue;
+      assert (val (lit));
+      Var & v = var (lit);
+      assert (v.level > 0);
+      Clause * reason = v.reason;
+      if (!reason) continue;
+      LOG (reason, "unprotecting assigned %d reason %p", lit, (void*) reason);
+      assert (reason->reason);
+      reason->reason = false;
+      count++;
+    }
   }
   LOG ("unprotected %zd reason clauses referenced on trail", count);
   protected_reasons = false;
@@ -213,6 +241,20 @@ void Internal::update_reason_references () {
     Clause * d = c->copy;
     v.reason = d;
     count++;
+  }
+  for (auto & t : trails) {
+    for (auto & lit : *t) {
+      if (!active (lit)) continue;
+      Var & v = var (lit);
+      Clause * c = v.reason;
+      if (!c) continue;
+      LOG (c, "updating assigned %d reason", lit);
+      assert (c->reason);
+      assert (c->moved);
+      Clause * d = c->copy;
+      v.reason = d;
+      count++;
+    }
   }
   LOG ("updated %zd assigned reason references", count);
 }
