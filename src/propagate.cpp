@@ -260,15 +260,16 @@ bool Internal::propagate_conflicts () {
 
     // watch first and second instead
     
+    LOG (c, "first %d, second %d in", first, second);
+    assert (first == *fpos && second == *spos);
     unwatch_clause (c);
-    int f = c->literals[0];
-    int s = c->literals[1];
+    int f = lits[0];
     lits[0] = first;
-    lits[1] = second;
     *fpos = f;
+    int s = lits[1];
+    lits[1] = second;
     *spos = s;
     watch_clause (c);
-    
   }
   conflicts.resize (j - conflicts.begin ());
   
