@@ -147,7 +147,6 @@ struct less_conditioned {
 // triggered during CDCL search according to 'conditioning' above and uses
 // the current assignment as basis to find globally blocked clauses.
 
-// TODO: multitrail
 long Internal::condition_round (long delta) {
 
   long limit, props = 0;
@@ -414,11 +413,15 @@ long Internal::condition_round (long delta) {
 
   // with opts multitrail we might have more trails (which do not contain
   // root assigned literals but might contain fixed literals anyways)
-  for (auto & t : trails)
-    for (const auto & lit : *t)
-      if (fixed (lit))           // TODO: is comment ^ true? if not remove this
+  int l = 0;
+  for (auto & t : trails) {
+    l++;
+    for (const auto & lit : *t) {
+      if (fixed (lit) && var (lit).level == l)
         condition_unassign (lit);
-
+    }
+  }
+  
   // Stack to save temporarily unassigned (conditional) literals.
   //
   vector<int> unassigned;
@@ -720,9 +723,13 @@ long Internal::condition_round (long delta) {
         assert (!is_conditional_literal (lit));
       }
     }
+    l = 0;
     for (auto & t : trails) {
+      l++;
       for (size_t i = 0; i < t->size (); i++) {
         const int lit = (*t)[i];
+        if (var (lit).level < l) continue;
+        assert (var (lit).level == l);
         if (val (lit)) {
           check.assigned++;
           if (is_conditional_literal (lit)) {
@@ -787,10 +794,15 @@ long Internal::condition_round (long delta) {
       for (const auto & lit : trail)
         if (is_autarky_literal (lit))
           external->push_witness_literal_on_extension_stack (lit);
-      for (auto & t : trails)
-        for (const auto & lit : *t)
-          if (is_autarky_literal (lit))
+      l = 0;
+      for (auto & t : trails) {
+        l++;
+        for (const auto & lit : *t) {
+          if (is_autarky_literal (lit) && var (lit).level == l) {
             external->push_witness_literal_on_extension_stack (lit);
+          }
+        }
+      }
       external->push_clause_on_extension_stack (c);
 
       mark_garbage (c);
@@ -876,9 +888,13 @@ long Internal::condition_round (long delta) {
     assert (tmp >= 0);
     if (!tmp) condition_assign (lit);
   }
+  l = 0;
   for (auto & t : trails) {
+    l++;
     for (size_t i = 0; i < t->size (); i++) {
       const int lit = (*t)[i];
+      if (var (lit).level < l) continue;
+      assert (var (lit).level == l);
       const signed char tmp = val (lit);
       assert (tmp >= 0);
       if (!tmp) condition_assign (lit);
