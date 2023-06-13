@@ -257,7 +257,7 @@ bool Internal::propagate_conflicts () {
   
       // now find valid choice for second...
       for (spos = lits; spos < end; spos++)
-        if (*spos != first && var (second = *spos).level == other_level)
+        if (*spos != first && var (second = *spos).level >= other_level)
           break;
     }
     assert (second);
