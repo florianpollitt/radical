@@ -49,7 +49,7 @@ OPTION( compact,           1,  0,  1,0,1,0,1, "compact internal variables") \
 OPTION( compactint,      2e3,  1,2e9,0,0,0,1, "compacting interval") \
 OPTION( compactlim,      1e2,  0,1e3,0,0,0,1, "inactive limit per mille") \
 OPTION( compactmin,      1e2,  1,2e9,0,0,0,1, "minimum inactive limit") \
-OPTION( condition,         0,  0,  0,0,0,0,1, "globally blocked clause elim") \
+OPTION( condition,         1,  0,  1,0,0,0,1, "globally blocked clause elim") \
 OPTION( conditionint,    1e4,  1,2e9,0,0,0,1, "initial conflict interval") \
 OPTION( conditionmaxeff, 1e7,  0,2e9,1,0,0,1, "maximum condition efficiency") \
 OPTION( conditionmaxrat, 100,  1,2e9,1,0,0,1, "maximum clause variable ratio") \

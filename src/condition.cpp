@@ -412,6 +412,13 @@ long Internal::condition_round (long delta) {
     if (fixed (lit))
       condition_unassign (lit);
 
+  // with opts multitrail we might have more trails (which do not contain
+  // root assigned literals but might contain fixed literals anyways)
+  for (auto & t : trails)
+    for (const auto & lit : *t)
+      if (fixed (lit))           // TODO: is comment ^ true? if not remove this
+        condition_unassign (lit);
+
   // Stack to save temporarily unassigned (conditional) literals.
   //
   vector<int> unassigned;
@@ -713,6 +720,26 @@ long Internal::condition_round (long delta) {
         assert (!is_conditional_literal (lit));
       }
     }
+    for (auto & t : trails) {
+      for (size_t i = 0; i < t->size (); i++) {
+        const int lit = (*t)[i];
+        if (val (lit)) {
+          check.assigned++;
+          if (is_conditional_literal (lit)) {
+            LOG ("remaining conditional %d", lit);
+            assert (!is_autarky_literal (lit));
+            check.conditional++;
+          } else {
+            assert (is_autarky_literal (lit));
+            LOG ("remaining autarky %d", lit);
+            check.autarky++;
+          }
+        } else {
+          assert (!is_autarky_literal (lit));
+          assert (!is_conditional_literal (lit));
+        }
+      }
+    }
     assert (remain.assigned == check.assigned);
     assert (remain.conditional == check.conditional);
     assert (remain.autarky == check.autarky);
@@ -760,6 +787,10 @@ long Internal::condition_round (long delta) {
       for (const auto & lit : trail)
         if (is_autarky_literal (lit))
           external->push_witness_literal_on_extension_stack (lit);
+      for (auto & t : trails)
+        for (const auto & lit : *t)
+          if (is_autarky_literal (lit))
+            external->push_witness_literal_on_extension_stack (lit);
       external->push_clause_on_extension_stack (c);
 
       mark_garbage (c);
@@ -845,10 +876,21 @@ long Internal::condition_round (long delta) {
     assert (tmp >= 0);
     if (!tmp) condition_assign (lit);
   }
+  for (auto & t : trails) {
+    for (size_t i = 0; i < t->size (); i++) {
+      const int lit = (*t)[i];
+      const signed char tmp = val (lit);
+      assert (tmp >= 0);
+      if (!tmp) condition_assign (lit);
+    }
+  }
 
 #ifndef NDEBUG
   for (const auto & lit : trail)
     assert (!marked (lit));
+  for (auto & t : trails)
+    for (const auto & lit : *t)
+      assert (!marked (lit));
 #endif
 
   unprotect_reasons ();
