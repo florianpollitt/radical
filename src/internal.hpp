@@ -541,7 +541,7 @@ struct Internal {
                               std::vector<int>::size_type, const int);
   void shrunken_block_no_uip(const std::vector<int>::reverse_iterator&, const std::vector<int>::reverse_iterator&, unsigned&, const int);
   void push_literals_of_block(const std::vector<int>::reverse_iterator&, const std::vector<int>::reverse_iterator&, int, unsigned);
-  unsigned shrink_next(unsigned&, unsigned&);
+  unsigned shrink_next(int, unsigned&, unsigned&);
   std::vector<int>::reverse_iterator minimize_and_shrink_block(std::vector<int>::reverse_iterator&, unsigned int&, unsigned int&, const int);
   unsigned shrink_block(std::vector<int>::reverse_iterator&, std::vector<int>::reverse_iterator&, int, unsigned&, unsigned&, const int, unsigned);
   unsigned shrink_along_reason(int, int, bool, bool&, unsigned);

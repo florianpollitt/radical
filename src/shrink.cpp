@@ -89,8 +89,9 @@ namespace CaDiCaL {
     f.shrinkable = true;
     f.poison = false;
     shrinkable.push_back(lit);
-    if (opts.shrinkreap) {
-      assert (max_trail < trail.size());
+    if (opts.shrinkreap) {    // different assertion for multitrail
+      assert (!opts.multitrail || max_trail < trails[blevel-1]->size ());
+      assert (opts.multitrail || max_trail < trail.size ());
       const unsigned dist = max_trail - v.trail;
       reap.push(dist);
     }
@@ -178,16 +179,17 @@ namespace CaDiCaL {
     }
   }
 
-  unsigned inline Internal::shrink_next(unsigned &open, unsigned& max_trail)
+  unsigned inline Internal::shrink_next(int blevel, unsigned &open, unsigned& max_trail)
   {
+    vector<int> * t = next_trail (blevel);
     if(opts.shrinkreap) {
       assert(!reap.empty());
       const unsigned dist = reap.pop();
       --open;
       assert (dist <= max_trail);
       const unsigned pos = max_trail - dist;
-      assert(pos < trail.size());
-      const int uip = trail[pos];
+      assert(pos < t->size());
+      const int uip = (*t)[pos];
       assert(val(uip) > 0);
       LOG("trying to shrink literal %d at trail[%u]", uip, pos);
       return uip;
@@ -198,7 +200,7 @@ namespace CaDiCaL {
 #endif
       do {
         assert(max_trail <= init_max_trail);
-        uip = trail[max_trail--];
+        uip = (*t)[max_trail--];
       } while (!flags (uip).shrinkable);
       --open;
       LOG("open is now %d, uip = %d", open, uip);
@@ -259,7 +261,9 @@ namespace CaDiCaL {
     assert(rbegin_lits < rend_block);
 
     LOG("trying to shrink %u literals on level %u", open, blevel);
-    LOG("maximum trail position %zd on level %u", trail.size(), blevel);
+    vector<int> * t = next_trail (blevel);
+    
+    LOG("maximum trail position %zd on level %u", t->size(), blevel);
     if (opts.shrinkreap)
       LOG ("shrinking up to %u", max_trail);
 
@@ -277,7 +281,7 @@ namespace CaDiCaL {
       assert(open > 0);
       while (!failed) {
         assert(!opts.shrinkreap || reap.size() == open);
-        uip = shrink_next(open, max_trail);
+        uip = shrink_next(blevel, open, max_trail);
         if(open == 0) {
           break;
         }
