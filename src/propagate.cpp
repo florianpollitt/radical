@@ -248,7 +248,10 @@ bool Internal::propagate_conflicts () {
                        // valid choice for second already, then elevate_lit
                        // will do nothing.
       if (val (first) > 0) elevate_lit (first, c);
-      else search_assign (first, c);
+      else {
+        build_chain_for_units (first, c);
+        search_assign (first, c);
+      }
       
       int other_level = var (first).level;
   
