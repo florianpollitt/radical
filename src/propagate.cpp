@@ -240,6 +240,7 @@ bool Internal::propagate_conflicts () {
       break;
     }
     LOG (c, "first %d, second %d in", first, second);
+    assert (first);              // we should not get any conflicting clause
     if (!first) continue;        // still conflicting, might be impossible...
     j--;                         // drop conflict, but fix watches
     
@@ -260,23 +261,54 @@ bool Internal::propagate_conflicts () {
 
     // watch first and second instead
     
+    if (c->size == 2) continue;
     LOG (c, "first %d, second %d in", first, second);
     assert (first == *fpos && second == *spos);
-    unwatch_clause (c);
+
     int f = lits[0];
-    lits[0] = first;
-    *fpos = f;
     int s = lits[1];
-    lits[1] = second;
-    *spos = s;
-    watch_clause (c);
+    if ((first == f && second == s) || (first == s && second == f)) continue;
+
+    
+    if (first == f) {
+      assert (second != s);
+      remove_watch (watches (s), c);
+      lits[1] = second;
+      *spos = s;
+      watch_literal (second, first, c);
+    } else if (first == s) {
+      assert (second != f);
+      remove_watch (watches (f), c);
+      lits[0] = second;
+      *spos = f;
+      watch_literal (second, first, c);
+    } else if (second == f) {
+      assert (first != s);
+      remove_watch (watches (s), c);
+      lits[1] = first;
+      *fpos = s;
+      watch_literal (first, second, c);
+    } else if (second == s) {
+      assert (first != f);
+      remove_watch (watches (f), c);
+      lits[0] = first;
+      *fpos = f;
+      watch_literal (first, second, c);
+    } else {
+      unwatch_clause (c);
+      lits[0] = first;
+      *fpos = f;
+      lits[1] = second;
+      *spos = s;
+      watch_clause (c);
+    }
   }
   conflicts.resize (j - conflicts.begin ());
   
   // after backtracking we are guaranteed at least one
   // unassigned literals per conflict.
   // assigning literals (the uip from conflict analysis and
-  // those during this routing) should not assign this literal to false
+  // those during this routine) should not assign this literal to false
   // so the following assertion should hold actually:
 
   assert (conflicts.empty ());
