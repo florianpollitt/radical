@@ -707,11 +707,12 @@ void Internal::finalize () {
   if (!proof || !opts.lratfrat) return;
   LOG ("finalizing");
   proof->finalize_clause (conflict_id, {});
-  for (unsigned uidx = 0; uidx <= vlit (max_var) + 1; uidx++) {
+  for (const auto & lit : lits) {
     //if (idx > (unsigned) max_var) break;
+    const auto uidx = vlit (lit);
     const uint64_t id = unit_clauses[uidx];
     if (!id) continue;
-    const int lit = u2i (uidx);
+    // const int lit = u2i (uidx);
     proof->finalize_unit (id, lit);
   }
   // See the discussion in 'propagate' on why garbage binary clauses stick around.
