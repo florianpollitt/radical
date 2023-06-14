@@ -141,7 +141,7 @@ void Internal::multi_backtrack (int new_level) {
 
   for (int i = new_level; i < level; i++) {
     assert (level > 0);
-    assert (i > 0);     // check that loop is safe for level = INT_MAX
+    assert (i >= 0);     // check that loop is safe for level = INT_MAX
     int l = i+1;
     LOG ("unassigning level %d", l);
     vector<int>* t = trails[i];
