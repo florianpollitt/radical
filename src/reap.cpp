@@ -1,10 +1,10 @@
 #include "reap.hpp"
-#include<cstring>
-#include<cassert>
+#include <cassert>
 #include <climits>
+#include <cstring>
 
 void Reap::init() {
-  for(auto & bucket : buckets)
+  for (auto &bucket : buckets)
     bucket = {0};
   assert(!num_elements);
   assert(!last_deleted);
@@ -19,20 +19,18 @@ void Reap::release() {
   max_bucket = 0;
 }
 
-Reap::Reap () {
+Reap::Reap() {
   num_elements = 0;
   last_deleted = 0;
   min_bucket = 32;
   max_bucket = 0;
 }
 
-
 static inline unsigned leading_zeroes_of_unsigned(unsigned x) {
   return x ? __builtin_clz(x) : sizeof(unsigned) * 8;
 }
 
-void Reap::push(unsigned e)
-{
+void Reap::push(unsigned e) {
   assert(last_deleted <= e);
   const unsigned diff = e ^ last_deleted;
   const unsigned bucket = 32 - leading_zeroes_of_unsigned(diff);
@@ -118,8 +116,7 @@ unsigned Reap::pop() {
   }
 }
 
-void Reap::clear()
-{
+void Reap::clear() {
   assert(max_bucket <= 32);
   for (unsigned i = 0; i < 33; i++)
     buckets[i].clear();

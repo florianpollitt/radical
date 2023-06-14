@@ -10,14 +10,19 @@ namespace CaDiCaL {
 
 /*------------------------------------------------------------------------*/
 
-bool Internal::compacting () {
-  if (level) return false;
-  if (!opts.compact) return false;
-  if (stats.conflicts < lim.compact) return false;
-  int inactive = max_var - active ();
-  assert (inactive >= 0);
-  if (!inactive) return false;
-  if (inactive < opts.compactmin) return false;
+bool Internal::compacting() {
+  if (level)
+    return false;
+  if (!opts.compact)
+    return false;
+  if (stats.conflicts < lim.compact)
+    return false;
+  int inactive = max_var - active();
+  assert(inactive >= 0);
+  if (!inactive)
+    return false;
+  if (inactive < opts.compactmin)
+    return false;
   return inactive >= (1e-3 * opts.compactlim) * max_var;
 }
 
@@ -25,12 +30,12 @@ bool Internal::compacting () {
 
 struct Mapper {
 
-  Internal * internal;
-  int new_max_var;              // New 'max_var' after compacting.
-  int * table;                  // Old variable index to new literal map.
-  int first_fixed;              // First fixed variable index.
-  int map_first_fixed;          // Mapped literal of first fixed variable.
-  signed char first_fixed_val;  // Value of first fixed variable.
+  Internal *internal;
+  int new_max_var;             // New 'max_var' after compacting.
+  int *table;                  // Old variable index to new literal map.
+  int first_fixed;             // First fixed variable index.
+  int map_first_fixed;         // Mapped literal of first fixed variable.
+  signed char first_fixed_val; // Value of first fixed variable.
   size_t new_vsize;
 
   /*----------------------------------------------------------------------*/
@@ -41,39 +46,36 @@ struct Mapper {
   // separately as it is done in Lingeling, where fixed variables are
   // mapped to the internal variable '1'.
   //
-  Mapper (Internal * i) :
-    internal (i),
-    new_max_var (0),
-    first_fixed (0),
-    map_first_fixed (0),
-    first_fixed_val (0)
-  {
-    table = new int [ internal->max_var + 1u ];
-    clear_n (table, internal->max_var + 1u);
+  Mapper(Internal *i)
+      : internal(i), new_max_var(0), first_fixed(0), map_first_fixed(0),
+        first_fixed_val(0) {
+    table = new int[internal->max_var + 1u];
+    clear_n(table, internal->max_var + 1u);
 
-    assert (!internal->level);
+    assert(!internal->level);
 
     for (auto src : internal->vars) {
-      const Flags & f = internal->flags (src);
-      if (f.active ()) table[src] = ++new_max_var;
-      else if (f.fixed () && !first_fixed)
+      const Flags &f = internal->flags(src);
+      if (f.active())
+        table[src] = ++new_max_var;
+      else if (f.fixed() && !first_fixed)
         table[first_fixed = src] = map_first_fixed = ++new_max_var;
     }
 
-    first_fixed_val = first_fixed ? internal->val (first_fixed) : 0;
+    first_fixed_val = first_fixed ? internal->val(first_fixed) : 0;
     new_vsize = new_max_var + 1u;
   }
 
-  ~Mapper () { delete [] table; }
+  ~Mapper() { delete[] table; }
 
   /*----------------------------------------------------------------------*/
   // Map old variable indices.  A result of zero means not mapped.
   //
-  int map_idx (int src) {
-    assert (0 < src);
-    assert (src <= internal->max_var);
+  int map_idx(int src) {
+    assert(0 < src);
+    assert(src <= internal->max_var);
     const int res = table[src];
-    assert (res <= new_max_var);
+    assert(res <= new_max_var);
     return res;
   }
 
@@ -82,116 +84,120 @@ struct Mapper {
   // to care about signedness of 'src', and in addition that fixed variables
   // have all to be mapped to the first fixed variable 'first_fixed'.
   //
-  int map_lit (int src) {
-    int res = map_idx (abs (src));
+  int map_lit(int src) {
+    int res = map_idx(abs(src));
     if (!res) {
-      const signed char tmp = internal->val (src);
+      const signed char tmp = internal->val(src);
       if (tmp) {
-        assert (first_fixed);
+        assert(first_fixed);
         res = map_first_fixed;
-        if (tmp != first_fixed_val) res = -res;
+        if (tmp != first_fixed_val)
+          res = -res;
       }
-    } else if ((src) < 0) res = -res;
-    assert (abs (res) <= new_max_var);
+    } else if ((src) < 0)
+      res = -res;
+    assert(abs(res) <= new_max_var);
     return res;
   }
 
   /*----------------------------------------------------------------------*/
   // Map positive variable indices in vector.
   //
-  template<class T>
-  void map_vector (vector<T> & v) {
+  template <class T> void map_vector(vector<T> &v) {
     for (auto src : internal->vars) {
-      const int dst = map_idx (src);
-      if (!dst) continue;
-      assert (0 < dst);
-      assert (dst <= src);
+      const int dst = map_idx(src);
+      if (!dst)
+        continue;
+      assert(0 < dst);
+      assert(dst <= src);
       v[dst] = v[src];
     }
-    v.resize (new_vsize);
-    shrink_vector (v);
+    v.resize(new_vsize);
+    shrink_vector(v);
   }
 
   /*----------------------------------------------------------------------*/
   // Map positive and negative variable indices in two-sided vector.
   //
-  template<class T>
-  void map2_vector (vector<T> & v) {
+  template <class T> void map2_vector(vector<T> &v) {
     for (auto src : internal->vars) {
-      const int dst = map_idx (src);
-      if (!dst) continue;
-      assert (0 < dst);
-      assert (dst <= src);
-      v[2*dst] = v[2*src];
-      v[2*dst + 1] = v[2*src + 1];
+      const int dst = map_idx(src);
+      if (!dst)
+        continue;
+      assert(0 < dst);
+      assert(dst <= src);
+      v[2 * dst] = v[2 * src];
+      v[2 * dst + 1] = v[2 * src + 1];
     }
-    v.resize (2*new_vsize);
-    shrink_vector (v);
+    v.resize(2 * new_vsize);
+    shrink_vector(v);
   }
 
   /*----------------------------------------------------------------------*/
   // Map a vector of literals, flush inactive literals, then resize and
   // shrink it to fit the new size after flushing.
   //
-  void map_flush_and_shrink_lits (vector<int> & v) {
-    const auto end = v.end ();
-    auto j = v.begin (), i = j;
+  void map_flush_and_shrink_lits(vector<int> &v) {
+    const auto end = v.end();
+    auto j = v.begin(), i = j;
     for (; i != end; i++) {
       const int src = *i;
-      int dst = map_idx (abs (src));
-      assert (abs (dst) <= abs (src));
-      if (!dst) continue;
-      if (src < 0) dst = -dst;
+      int dst = map_idx(abs(src));
+      assert(abs(dst) <= abs(src));
+      if (!dst)
+        continue;
+      if (src < 0)
+        dst = -dst;
       *j++ = dst;
     }
-    v.resize (j - v.begin ());
-    shrink_vector (v);
+    v.resize(j - v.begin());
+    shrink_vector(v);
   }
-
 };
 
 /*------------------------------------------------------------------------*/
 
-static signed char * ignore_clang_analyze_memory_leak_warning;
+static signed char *ignore_clang_analyze_memory_leak_warning;
 
-void Internal::compact () {
+void Internal::compact() {
 
-  START (compact);
+  START(compact);
 
-  assert (active () < max_var);
+  assert(active() < max_var);
 
   stats.compacts++;
 
-  assert (!level);
-  assert (!unsat);
-  assert (!conflict);
-  assert (clause.empty ());
-  assert (levels.empty ());
-  assert (analyzed.empty ());
-  assert (minimized.empty ());
-  assert (control.size () == 1);
-  assert (propagated == trail.size ());
+  assert(!level);
+  assert(!unsat);
+  assert(!conflict);
+  assert(clause.empty());
+  assert(levels.empty());
+  assert(analyzed.empty());
+  assert(minimized.empty());
+  assert(control.size() == 1);
+  assert(propagated == trail.size());
 
-  garbage_collection ();
+  garbage_collection();
 
-  Mapper mapper (this);
+  Mapper mapper(this);
 
   if (mapper.first_fixed)
-    LOG ("found first fixed %d",
-      sign (mapper.first_fixed_val)*mapper.first_fixed);
-  else LOG ("no variable fixed");
+    LOG("found first fixed %d",
+        sign(mapper.first_fixed_val) * mapper.first_fixed);
+  else
+    LOG("no variable fixed");
 
-  if (!assumptions.empty ()) {
-    assert (!external->assumptions.empty ());
-    LOG ("temporarily reset internal assumptions");
-    reset_assumptions ();
+  if (!assumptions.empty()) {
+    assert(!external->assumptions.empty());
+    LOG("temporarily reset internal assumptions");
+    reset_assumptions();
   }
 
-  const bool is_constraint = !constraint.empty ();
+  const bool is_constraint = !constraint.empty();
   if (is_constraint) {
-    assert (!external->constraint.empty ());
-    LOG ("temporarily reset internal constraint");
-    reset_constraint ();
+    assert(!external->constraint.empty());
+    LOG("temporarily reset internal constraint");
+    reset_constraint();
   }
 
   /*======================================================================*/
@@ -202,65 +208,70 @@ void Internal::compact () {
   //
   for (auto eidx : external->vars) {
     int src = external->e2i[eidx];
-    if (!src) continue;
-    int dst = mapper.map_lit (src);
-    LOG ("compact %" PRId64 " maps external %d to internal %d from internal %d",
-      stats.compacts, eidx, dst, src);
+    if (!src)
+      continue;
+    int dst = mapper.map_lit(src);
+    LOG("compact %" PRId64 " maps external %d to internal %d from internal %d",
+        stats.compacts, eidx, dst, src);
     external->e2i[eidx] = dst;
   }
 
   // Delete garbage units. Needs to occur before resizing unit_clauses
   //
   for (auto src : internal->vars) {
-    const int dst = mapper.map_idx (src);
-    assert (dst <= src);
-    const signed char tmp = internal->val (src);
+    const int dst = mapper.map_idx(src);
+    assert(dst <= src);
+    const signed char tmp = internal->val(src);
     if (!dst && !tmp) {
-      unit_clauses[2*src] = 0;
-      unit_clauses[2*src + 1] = 0;
+      unit_clauses[2 * src] = 0;
+      unit_clauses[2 * src + 1] = 0;
       continue;
     }
     if (!tmp || src == mapper.first_fixed) {
-      assert (0 < dst);
-      if (dst == src) continue;
-      assert (!unit_clauses[2*dst] && !unit_clauses[2*dst + 1]);
-      unit_clauses[2*dst] = unit_clauses[2*src];
-      unit_clauses[2*dst + 1] = unit_clauses[2*src + 1];
-      unit_clauses[2*src] = 0;
-      unit_clauses[2*src + 1] = 0;
+      assert(0 < dst);
+      if (dst == src)
+        continue;
+      assert(!unit_clauses[2 * dst] && !unit_clauses[2 * dst + 1]);
+      unit_clauses[2 * dst] = unit_clauses[2 * src];
+      unit_clauses[2 * dst + 1] = unit_clauses[2 * src + 1];
+      unit_clauses[2 * src] = 0;
+      unit_clauses[2 * src + 1] = 0;
       continue;
     }
-    uint64_t id = unit_clauses[2*src];
+    uint64_t id = unit_clauses[2 * src];
     int lit = src;
-    if (!id) { id = unit_clauses[2*src + 1]; lit = -lit; }
-    unit_clauses[2*src] = 0;
-    unit_clauses[2*src + 1] = 0;
-    assert (id);
+    if (!id) {
+      id = unit_clauses[2 * src + 1];
+      lit = -lit;
+    }
+    unit_clauses[2 * src] = 0;
+    unit_clauses[2 * src + 1] = 0;
+    assert(id);
     if (proof)
-      proof->delete_unit_clause (id, lit);
+      proof->delete_unit_clause(id, lit);
   }
-  unit_clauses.resize (2*mapper.new_vsize);
-  shrink_vector (unit_clauses);
+  unit_clauses.resize(2 * mapper.new_vsize);
+  shrink_vector(unit_clauses);
 
   // Map the literals in all clauses.
   //
-  for (const auto & c : clauses) {
-    assert (!c->garbage);
-    for (auto & src : *c) {
-      assert (!val (src));
+  for (const auto &c : clauses) {
+    assert(!c->garbage);
+    for (auto &src : *c) {
+      assert(!val(src));
       int dst;
-      dst = mapper.map_lit (src);
-      assert (dst || c->garbage);
+      dst = mapper.map_lit(src);
+      assert(dst || c->garbage);
       src = dst;
     }
   }
 
   // Map the blocking literals in all watches.
   //
-  if (!wtab.empty ())
+  if (!wtab.empty())
     for (auto lit : lits)
-      for (auto & w : watches (lit))
-        w.blit = mapper.map_lit (w.blit);
+      for (auto &w : watches(lit))
+        w.blit = mapper.map_lit(w.blit);
 
   // We first flush inactive variables and map the links in the queue.  This
   // has to be done before we map the actual links data structure 'links'.
@@ -268,16 +279,24 @@ void Internal::compact () {
     int prev = 0, mapped_prev = 0, next;
     for (int idx = queue.first; idx; idx = next) {
       next = links[idx].next;
-      if (idx == mapper.first_fixed) continue;
-      const int dst = mapper.map_idx (idx);
-      if (!dst) continue;
-      assert (active (idx));
-      if (prev) links[prev].next = dst; else queue.first = dst;
+      if (idx == mapper.first_fixed)
+        continue;
+      const int dst = mapper.map_idx(idx);
+      if (!dst)
+        continue;
+      assert(active(idx));
+      if (prev)
+        links[prev].next = dst;
+      else
+        queue.first = dst;
       links[idx].prev = mapped_prev;
       mapped_prev = dst;
       prev = idx;
     }
-    if (prev) links[prev].next = 0; else queue.first = 0;
+    if (prev)
+      links[prev].next = 0;
+    else
+      queue.first = 0;
     queue.unassigned = queue.last = mapped_prev;
   }
 
@@ -285,15 +304,16 @@ void Internal::compact () {
   // In the second part we map, flush and shrink arrays.
   /*======================================================================*/
 
-  mapper.map_flush_and_shrink_lits (trail);
-  propagated = trail.size ();
+  mapper.map_flush_and_shrink_lits(trail);
+  propagated = trail.size();
   if (mapper.first_fixed) {
-    assert (trail.size () == 1);
-    var (mapper.first_fixed).trail = 0;            // before mapping 'vtab'
-  } else assert (trail.empty ());
+    assert(trail.size() == 1);
+    var(mapper.first_fixed).trail = 0; // before mapping 'vtab'
+  } else
+    assert(trail.empty());
 
-  if (!probes.empty ())
-    mapper.map_flush_and_shrink_lits (probes);
+  if (!probes.empty())
+    mapper.map_flush_and_shrink_lits(probes);
 
   /*======================================================================*/
   // In the third part we map stuff and also reallocate memory.
@@ -302,94 +322,101 @@ void Internal::compact () {
   // Now we continue in reverse order of allocated bytes, e.g., see
   // 'Internal::enlarge' which reallocates in order of allocated bytes.
 
-  mapper.map_vector (ftab);
-  mapper.map_vector (parents);
-  mapper.map_vector (marks);
-  mapper.map_vector (phases.saved);
-  mapper.map_vector (phases.forced);
-  mapper.map_vector (phases.target);
-  mapper.map_vector (phases.best);
-  mapper.map_vector (phases.prev);
-  mapper.map_vector (phases.min);
+  mapper.map_vector(ftab);
+  mapper.map_vector(parents);
+  mapper.map_vector(marks);
+  mapper.map_vector(phases.saved);
+  mapper.map_vector(phases.forced);
+  mapper.map_vector(phases.target);
+  mapper.map_vector(phases.best);
+  mapper.map_vector(phases.prev);
+  mapper.map_vector(phases.min);
 
   // Special code for 'frozentab'.
   //
   for (auto src : vars) {
-    const int dst = mapper.map_idx (src);
-    if (!dst) continue;
-    if (src == dst) continue;
-    assert (dst < src);
+    const int dst = mapper.map_idx(src);
+    if (!dst)
+      continue;
+    if (src == dst)
+      continue;
+    assert(dst < src);
     frozentab[dst] += frozentab[src];
     frozentab[src] = 0;
   }
-  frozentab.resize (mapper.new_vsize);
-  shrink_vector (frozentab);
+  frozentab.resize(mapper.new_vsize);
+  shrink_vector(frozentab);
 
   /*----------------------------------------------------------------------*/
 
-  if (!external->assumptions.empty ()) {
+  if (!external->assumptions.empty()) {
 
-    for (const auto & elit : external->assumptions) {
-      assert (elit);
-      assert (elit != INT_MIN);
-      int eidx = abs (elit);
-      assert (eidx <= external->max_var);
+    for (const auto &elit : external->assumptions) {
+      assert(elit);
+      assert(elit != INT_MIN);
+      int eidx = abs(elit);
+      assert(eidx <= external->max_var);
       int ilit = external->e2i[eidx];
-      assert (ilit);            // Because we froze all!!!
-      if (elit < 0) ilit = -ilit;
-      assume (ilit);
+      assert(ilit); // Because we froze all!!!
+      if (elit < 0)
+        ilit = -ilit;
+      assume(ilit);
     }
 
-    PHASE ("compact", stats.compacts,
-      "reassumed %zd external assumptions",
-      external->assumptions.size ());
+    PHASE("compact", stats.compacts, "reassumed %zd external assumptions",
+          external->assumptions.size());
   }
 
   // Special case for 'val' as for 'val' we trade branch less code for
   // memory and always allocated an [-maxvar,...,maxvar] array.
   {
-    signed char * new_vals = new signed char [ 2*mapper.new_vsize ];
+    signed char *new_vals = new signed char[2 * mapper.new_vsize];
     ignore_clang_analyze_memory_leak_warning = new_vals;
     new_vals += mapper.new_vsize;
     for (auto src : vars)
-      new_vals[-mapper.map_idx (src)] = vals[-src];
+      new_vals[-mapper.map_idx(src)] = vals[-src];
     for (auto src : vars)
-      new_vals[mapper.map_idx (src)] = vals[src];
+      new_vals[mapper.map_idx(src)] = vals[src];
     new_vals[0] = 0;
     vals -= vsize;
-    delete [] vals;
+    delete[] vals;
     vals = new_vals;
   }
 
   // 'constrain' uses 'val', so this code has to be after remapping that
   if (is_constraint) {
-    assert (!level);
-    assert (!external->constraint.back ());
-    for (auto elit : external->constraint){
-      assert (elit != INT_MIN);
-      int eidx = abs (elit);
-      assert (eidx <= external->max_var);
+    assert(!level);
+    assert(!external->constraint.back());
+    for (auto elit : external->constraint) {
+      assert(elit != INT_MIN);
+      int eidx = abs(elit);
+      assert(eidx <= external->max_var);
       int ilit = external->e2i[eidx];
-      assert (!ilit == !elit);
+      assert(!ilit == !elit);
       if (elit < 0)
         ilit = -ilit;
-      LOG ("re adding lit extrenal %d internal %d to constraint", elit, ilit);
-      constrain (ilit);
+      LOG("re adding lit extrenal %d internal %d to constraint", elit, ilit);
+      constrain(ilit);
     }
-    PHASE ("compact", stats.compacts, "added %zd external literals to constraint",
-           external->constraint.size () -  1);
+    PHASE("compact", stats.compacts,
+          "added %zd external literals to constraint",
+          external->constraint.size() - 1);
   }
-  
-  mapper.map_vector (i2e);
-  mapper.map2_vector (ptab);
-  mapper.map_vector (btab);
-  mapper.map_vector (gtab);
-  mapper.map_vector (links);
-  mapper.map_vector (vtab);
-  if (!ntab.empty ()) mapper.map2_vector (ntab);
-  if (!wtab.empty ()) mapper.map2_vector (wtab);
-  if (!otab.empty ()) mapper.map2_vector (otab);
-  if (!big.empty ()) mapper.map2_vector (big);
+
+  mapper.map_vector(i2e);
+  mapper.map2_vector(ptab);
+  mapper.map_vector(btab);
+  mapper.map_vector(gtab);
+  mapper.map_vector(links);
+  mapper.map_vector(vtab);
+  if (!ntab.empty())
+    mapper.map2_vector(ntab);
+  if (!wtab.empty())
+    mapper.map2_vector(wtab);
+  if (!otab.empty())
+    mapper.map2_vector(otab);
+  if (!big.empty())
+    mapper.map2_vector(big);
 
   /*======================================================================*/
   // In the fourth part we map the binary heap for scores.
@@ -402,30 +429,31 @@ void Internal::compact () {
   // elements with 'zero' destination should be flushed.
 
   vector<int> saved;
-  assert (saved.empty ());
-  if (!scores.empty ()) {
-    while (!scores.empty ()) {
-      const int src = scores.front ();
-      scores.pop_front ();
-      const int dst = mapper.map_idx (src);
-      if (!dst) continue;
-      if (src == mapper.first_fixed) continue;
-      saved.push_back (dst);
+  assert(saved.empty());
+  if (!scores.empty()) {
+    while (!scores.empty()) {
+      const int src = scores.front();
+      scores.pop_front();
+      const int dst = mapper.map_idx(src);
+      if (!dst)
+        continue;
+      if (src == mapper.first_fixed)
+        continue;
+      saved.push_back(dst);
     }
-    scores.erase ();
+    scores.erase();
   }
-  mapper.map_vector (stab);
-  if (!saved.empty ()) {
+  mapper.map_vector(stab);
+  if (!saved.empty()) {
     for (const auto idx : saved)
-      scores.push_back (idx);
-    scores.shrink ();
+      scores.push_back(idx);
+    scores.shrink();
   }
 
   /*----------------------------------------------------------------------*/
 
-  PHASE ("compact", stats.compacts,
-    "reducing internal variables from %d to %d",
-    max_var, mapper.new_max_var);
+  PHASE("compact", stats.compacts, "reducing internal variables from %d to %d",
+        max_var, mapper.new_max_var);
 
   /*----------------------------------------------------------------------*/
 
@@ -433,22 +461,23 @@ void Internal::compact () {
 
   size_t new_target_assigned = 0, new_best_assigned = 0;
 
-  for (auto idx : Range (mapper.new_max_var)) {
-    if (phases.target[idx]) new_target_assigned++;
-    if (phases.best[idx]) new_best_assigned++;
+  for (auto idx : Range(mapper.new_max_var)) {
+    if (phases.target[idx])
+      new_target_assigned++;
+    if (phases.best[idx])
+      new_best_assigned++;
   }
 
-  LOG ("reset target assigned from %zd to %zd",
-    target_assigned, new_target_assigned);
-  LOG ("reset best assigned from %zd to %zd",
-    best_assigned, new_best_assigned);
+  LOG("reset target assigned from %zd to %zd", target_assigned,
+      new_target_assigned);
+  LOG("reset best assigned from %zd to %zd", best_assigned, new_best_assigned);
 
   target_assigned = new_target_assigned;
   best_assigned = new_best_assigned;
   no_conflict_until = 0;
 
-  INIT_EMA (averages.current.trail.fast, opts.ematrailfast);
-  INIT_EMA (averages.current.trail.slow, opts.ematrailslow);
+  INIT_EMA(averages.current.trail.fast, opts.ematrailfast);
+  INIT_EMA(averages.current.trail.slow, opts.ematrailslow);
 
   /*----------------------------------------------------------------------*/
 
@@ -459,16 +488,16 @@ void Internal::compact () {
   stats.inactive = stats.now.fixed = mapper.first_fixed ? 1 : 0;
   stats.now.substituted = stats.now.eliminated = stats.now.pure = 0;
 
-  check_var_stats ();
+  check_var_stats();
 
   int64_t delta = opts.compactint * (stats.compacts + 1);
   lim.compact = stats.conflicts + delta;
 
-  PHASE ("compact", stats.compacts,
-    "new compact limit %" PRId64 " after %" PRId64 " conflicts",
-    lim.compact, delta);
+  PHASE("compact", stats.compacts,
+        "new compact limit %" PRId64 " after %" PRId64 " conflicts",
+        lim.compact, delta);
 
-  STOP (compact);
+  STOP(compact);
 }
 
-}
+} // namespace CaDiCaL

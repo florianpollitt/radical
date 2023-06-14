@@ -10,40 +10,41 @@ namespace CaDiCaL {
 // clause will raise an abort signal and thus allows to debug the issue with
 // a symbolic debugger immediately.
 
-void External::check_solution_on_learned_clause () {
-  assert (solution);
-  for (const auto & lit : internal->clause)
-    if (sol (internal->externalize (lit)) > 0)
+void External::check_solution_on_learned_clause() {
+  assert(solution);
+  for (const auto &lit : internal->clause)
+    if (sol(internal->externalize(lit)) > 0)
       return;
-  fatal_message_start ();
-  fputs ("learned clause unsatisfied by solution:\n", stderr);
-  for (const auto & lit : internal->clause)
-    fprintf (stderr, "%d ", lit);
-  fputc ('0', stderr);
-  fatal_message_end ();
+  fatal_message_start();
+  fputs("learned clause unsatisfied by solution:\n", stderr);
+  for (const auto &lit : internal->clause)
+    fprintf(stderr, "%d ", lit);
+  fputc('0', stderr);
+  fatal_message_end();
 }
 
-void External::check_solution_on_shrunken_clause (Clause * c) {
-  assert (solution);
-  for (const auto & lit : *c)
-    if (sol (internal->externalize (lit)) > 0)
+void External::check_solution_on_shrunken_clause(Clause *c) {
+  assert(solution);
+  for (const auto &lit : *c)
+    if (sol(internal->externalize(lit)) > 0)
       return;
-  fatal_message_start ();
-  for (const auto & lit : *c)
-    fprintf (stderr, "%d ", lit);
-  fputc ('0', stderr);
-  fatal_message_end ();
+  fatal_message_start();
+  for (const auto &lit : *c)
+    fprintf(stderr, "%d ", lit);
+  fputc('0', stderr);
+  fatal_message_end();
 }
 
-void External::check_no_solution_after_learning_empty_clause () {
-  assert (solution);
-  FATAL ("learned empty clause but got solution");
+void External::check_no_solution_after_learning_empty_clause() {
+  assert(solution);
+  FATAL("learned empty clause but got solution");
 }
 
-void External::check_solution_on_learned_unit_clause (int unit) {
-  assert (solution);
-  if (sol (internal->externalize (unit)) > 0) return;
-  FATAL ("learned unit %d contradicts solution", unit);
+void External::check_solution_on_learned_unit_clause(int unit) {
+  assert(solution);
+  if (sol(internal->externalize(unit)) > 0)
+    return;
+  FATAL("learned unit %d contradicts solution", unit);
 }
 
-}
+} // namespace CaDiCaL

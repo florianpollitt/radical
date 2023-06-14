@@ -45,22 +45,24 @@ struct Clause;
 // starting to iterate (it can be zero though), otherwise it breaks.
 
 class Range {
-  static unsigned inc (unsigned u) { return u + 1u; }
+  static unsigned inc(unsigned u) { return u + 1u; }
   class iterator {
     int idx;
+
   public:
-    iterator (int i) : idx (i) { }
-    void operator++ () { idx = inc (idx); }
-    const int & operator* () const { return idx; }
-    friend bool operator != (const iterator & a, const iterator & b) {
+    iterator(int i) : idx(i) {}
+    void operator++() { idx = inc(idx); }
+    const int &operator*() const { return idx; }
+    friend bool operator!=(const iterator &a, const iterator &b) {
       return a.idx != b.idx;
     }
   };
-  int & n;
+  int &n;
+
 public:
-  iterator begin () const { return assert (n >= 0), iterator (inc (0)); }
-  iterator end ()   const { return assert (n >= 0), iterator (inc (n)); }
-  Range (int & m) : n (m) { assert (m >= 0); }
+  iterator begin() const { return assert(n >= 0), iterator(inc(0)); }
+  iterator end() const { return assert(n >= 0), iterator(inc(n)); }
+  Range(int &m) : n(m) { assert(m >= 0); }
 };
 
 // Same, but iterating over literals '-1,1,-2,2,....,-max_var,max_var'.
@@ -70,24 +72,26 @@ public:
 // template with 'inc' as only parameter.  This gives at least clean code.
 
 class Sange {
-  static unsigned inc (unsigned u) { return ~u + (u >> 31); }
+  static unsigned inc(unsigned u) { return ~u + (u >> 31); }
   class iterator {
     int lit;
+
   public:
-    iterator (int i) : lit (i) { }
-    void operator++ () { lit = inc (lit); }
-    const int & operator* () const { return lit; }
-    friend bool operator != (const iterator & a, const iterator & b) {
+    iterator(int i) : lit(i) {}
+    void operator++() { lit = inc(lit); }
+    const int &operator*() const { return lit; }
+    friend bool operator!=(const iterator &a, const iterator &b) {
       return a.lit != b.lit;
     }
   };
-  int & n;
+  int &n;
+
 public:
-  iterator begin () const { return assert (n >= 0), iterator (inc (0)); }
-  iterator end ()   const { return assert (n >= 0), iterator (inc (n)); }
-  Sange (int & m) : n (m) { assert (m >= 0); }
+  iterator begin() const { return assert(n >= 0), iterator(inc(0)); }
+  iterator end() const { return assert(n >= 0), iterator(inc(n)); }
+  Sange(int &m) : n(m) { assert(m >= 0); }
 };
 
-}
+} // namespace CaDiCaL
 
 #endif

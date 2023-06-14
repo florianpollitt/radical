@@ -13,15 +13,19 @@ namespace CaDiCaL {
 
 /*------------------------------------------------------------------------*/
 
-inline bool block_more_occs_size::operator () (unsigned a, unsigned b) {
-  size_t s = internal->noccs (-internal->u2i (a));
-  size_t t = internal->noccs (-internal->u2i (b));
-  if (s > t) return true;
-  if (s < t) return false;
-  s = internal->noccs (internal->u2i (a));
-  t = internal->noccs (internal->u2i (b));
-  if (s > t) return true;
-  if (s < t) return false;
+inline bool block_more_occs_size::operator()(unsigned a, unsigned b) {
+  size_t s = internal->noccs(-internal->u2i(a));
+  size_t t = internal->noccs(-internal->u2i(b));
+  if (s > t)
+    return true;
+  if (s < t)
+    return false;
+  s = internal->noccs(internal->u2i(a));
+  t = internal->noccs(internal->u2i(b));
+  if (s > t)
+    return true;
+  if (s < t)
+    return false;
   return a > b;
 }
 
@@ -36,58 +40,56 @@ inline bool block_more_occs_size::operator () (unsigned a, unsigned b) {
 // move-to-front scheme has the goal to faster find the matching literal,
 // which makes the resolvent tautological (again in the future).
 
-bool Internal::is_blocked_clause (Clause * c, int lit) {
+bool Internal::is_blocked_clause(Clause *c, int lit) {
 
-  LOG (c, "trying to block on %d", lit);
+  LOG(c, "trying to block on %d", lit);
 
-  assert (c->size >= opts.blockminclslim);
-  assert (c->size <= opts.blockmaxclslim);
-  assert (active (lit));
-  assert (!val (lit));
-  assert (!c->garbage);
-  assert (!c->redundant);
-  assert (!level);
+  assert(c->size >= opts.blockminclslim);
+  assert(c->size <= opts.blockmaxclslim);
+  assert(active(lit));
+  assert(!val(lit));
+  assert(!c->garbage);
+  assert(!c->redundant);
+  assert(!level);
 
-  mark (c);             // First mark all literals in 'c'.
+  mark(c); // First mark all literals in 'c'.
 
-  Occs & os = occs (-lit);
-  LOG ("resolving against at most %zd clauses with %d", os.size (), -lit);
+  Occs &os = occs(-lit);
+  LOG("resolving against at most %zd clauses with %d", os.size(), -lit);
 
-  bool res = true;      // Result is true if all resolvents tautological.
+  bool res = true; // Result is true if all resolvents tautological.
 
   // Can not use 'auto' here since we update 'os' during traversal.
   //
-  const auto end_of_os = os.end ();
-  auto i = os.begin ();
+  const auto end_of_os = os.end();
+  auto i = os.begin();
 
-  Clause * prev_d = 0;  // Previous non-tautological clause.
+  Clause *prev_d = 0; // Previous non-tautological clause.
 
-  for (; i != end_of_os; i++)
-  {
+  for (; i != end_of_os; i++) {
     // Move the first clause with non-tautological resolvent to the front of
     // the occurrence list to improve finding it faster later.
     //
-    Clause * d = *i;
+    Clause *d = *i;
 
-    assert (!d->garbage);
-    assert (!d->redundant);
-    assert (d->size <= opts.blockmaxclslim);
+    assert(!d->garbage);
+    assert(!d->redundant);
+    assert(d->size <= opts.blockmaxclslim);
 
-    *i = prev_d;        // Move previous non-tautological clause
-    prev_d = d;         // backwards but remember clause at this position.
+    *i = prev_d; // Move previous non-tautological clause
+    prev_d = d;  // backwards but remember clause at this position.
 
-    LOG (d, "resolving on %d against", lit);
+    LOG(d, "resolving on %d against", lit);
     stats.blockres++;
 
     int prev_other = 0; // Previous non-tautological literal.
 
     // No 'auto' since we update literals of 'd' during traversal.
     //
-    const const_literal_iterator end_of_d = d->end ();
+    const const_literal_iterator end_of_d = d->end();
     literal_iterator l;
 
-    for (l = d->begin (); l != end_of_d; l++)
-    {
+    for (l = d->begin(); l != end_of_d; l++) {
       // Same move-to-front mechanism for literals within a clause.  It
       // moves the first negatively marked literal to the front to find it
       // faster in the future.
@@ -95,45 +97,45 @@ bool Internal::is_blocked_clause (Clause * c, int lit) {
       const int other = *l;
       *l = prev_other;
       prev_other = other;
-      if (other == -lit) continue;
-      assert (other != lit);
-      assert (active (other));
-      assert (!val (other));
-      if (marked (other) < 0) {
-        LOG ("found tautological literal %d", other);
-        d->literals[0] = other;         // Move to front of 'd'.
+      if (other == -lit)
+        continue;
+      assert(other != lit);
+      assert(active(other));
+      assert(!val(other));
+      if (marked(other) < 0) {
+        LOG("found tautological literal %d", other);
+        d->literals[0] = other; // Move to front of 'd'.
         break;
       }
     }
 
-    if (l == end_of_d)
-    {
-      LOG ("no tautological literal found");
+    if (l == end_of_d) {
+      LOG("no tautological literal found");
       //
       // Since we did not find a tautological literal we restore the old
       // order of literals in the clause.
       //
-      const const_literal_iterator begin_of_d = d->begin ();
+      const const_literal_iterator begin_of_d = d->begin();
       while (l-- != begin_of_d) {
         const int other = *l;
         *l = prev_other;
         prev_other = other;
       }
-      res = false;  // Now 'd' is a witness that 'c' is not blocked.
-      os[0] = d;    // Move it to the front of the occurrence list.
+      res = false; // Now 'd' is a witness that 'c' is not blocked.
+      os[0] = d;   // Move it to the front of the occurrence list.
       break;
     }
   }
-  unmark (c);       // ... all literals of the candidate clause.
+  unmark(c); // ... all literals of the candidate clause.
 
   // If all resolvents are tautological and thus the clause is blocked we
   // restore the old order of clauses in the occurrence list of '-lit'.
   //
   if (res) {
-    assert (i == end_of_os);
-    const auto boc = os.begin ();
+    assert(i == end_of_os);
+    const auto boc = os.begin();
     while (i != boc) {
-      Clause * d = *--i;
+      Clause *d = *--i;
       *i = prev_d;
       prev_d = d;
     }
@@ -144,31 +146,35 @@ bool Internal::is_blocked_clause (Clause * c, int lit) {
 
 /*------------------------------------------------------------------------*/
 
-void Internal::block_schedule (Blocker & blocker)
-{
+void Internal::block_schedule(Blocker &blocker) {
   // Set skip flags for all literals in too large clauses.
   //
-  for (const auto & c : clauses) {
+  for (const auto &c : clauses) {
 
-    if (c->garbage) continue;
-    if (c->redundant) continue;
-    if (c->size <= opts.blockmaxclslim) continue;
+    if (c->garbage)
+      continue;
+    if (c->redundant)
+      continue;
+    if (c->size <= opts.blockmaxclslim)
+      continue;
 
-    for (const auto & lit : *c)
-      mark_skip (-lit);
+    for (const auto &lit : *c)
+      mark_skip(-lit);
   }
 
   // Connect all literal occurrences in irredundant clauses.
   //
-  for (const auto & c : clauses) {
+  for (const auto &c : clauses) {
 
-    if (c->garbage) continue;
-    if (c->redundant) continue;
+    if (c->garbage)
+      continue;
+    if (c->redundant)
+      continue;
 
-    for (const auto & lit : *c) {
-      assert (active (lit));
-      assert (!val (lit));
-      occs (lit).push_back (c);
+    for (const auto &lit : *c) {
+      assert(active(lit));
+      assert(!val(lit));
+      occs(lit).push_back(c);
     }
   }
 
@@ -179,10 +185,11 @@ void Internal::block_schedule (Blocker & blocker)
   // blocked clause elimination, but decrementing 'noccs' is cheap.
 
   for (auto lit : lits) {
-    if (!active (lit)) continue;
-    assert (!val (lit));
-    Occs & os = occs (lit);
-    noccs (lit) = os.size ();
+    if (!active(lit))
+      continue;
+    assert(!val(lit));
+    Occs &os = occs(lit);
+    noccs(lit) = os.size();
   }
 
   // Now we fill the schedule (priority queue) of candidate literals to be
@@ -195,25 +202,34 @@ void Internal::block_schedule (Blocker & blocker)
   int skipped = 0;
 
   for (auto idx : vars) {
-    if (!active (idx)) continue;
-    if (frozen (idx)) { skipped += 2; continue; }
-    assert (!val (idx));
+    if (!active(idx))
+      continue;
+    if (frozen(idx)) {
+      skipped += 2;
+      continue;
+    }
+    assert(!val(idx));
     for (int sign = -1; sign <= 1; sign += 2) {
       const int lit = sign * idx;
-      if (marked_skip (lit)) { skipped++; continue; }
-      if (!marked_block (lit)) continue;
-      unmark_block (lit);
-      LOG ("scheduling %d with %" PRId64 " positive and %" PRId64 " negative occurrences",
-        lit, noccs (lit), noccs (-lit));
-      blocker.schedule.push_back (vlit (lit));
+      if (marked_skip(lit)) {
+        skipped++;
+        continue;
+      }
+      if (!marked_block(lit))
+        continue;
+      unmark_block(lit);
+      LOG("scheduling %d with %" PRId64 " positive and %" PRId64
+          " negative occurrences",
+          lit, noccs(lit), noccs(-lit));
+      blocker.schedule.push_back(vlit(lit));
     }
   }
 
-  PHASE ("block", stats.blockings,
-    "scheduled %zd candidate literals %.2f%% (%d skipped %.2f%%)",
-    blocker.schedule.size (),
-    percent (blocker.schedule.size (), 2.0*active ()),
-    skipped, percent (skipped, 2.0*active ()));
+  PHASE("block", stats.blockings,
+        "scheduled %zd candidate literals %.2f%% (%d skipped %.2f%%)",
+        blocker.schedule.size(),
+        percent(blocker.schedule.size(), 2.0 * active()), skipped,
+        percent(skipped, 2.0 * active()));
 }
 
 /*------------------------------------------------------------------------*/
@@ -224,40 +240,42 @@ void Internal::block_schedule (Blocker & blocker)
 // is thus handled separately.  It also allows to avoid pushing blocked
 // clauses onto the extension stack.
 
-void Internal::block_pure_literal (Blocker & blocker, int lit)
-{
-  if (frozen (lit)) return;
-  assert (active (lit));
+void Internal::block_pure_literal(Blocker &blocker, int lit) {
+  if (frozen(lit))
+    return;
+  assert(active(lit));
 
-  Occs & pos = occs (lit);
-  Occs & nos = occs (-lit);
+  Occs &pos = occs(lit);
+  Occs &nos = occs(-lit);
 
-  assert (!noccs (-lit));
+  assert(!noccs(-lit));
 #ifndef NDEBUG
-  for (const auto & c : nos) assert (c->garbage);
+  for (const auto &c : nos)
+    assert(c->garbage);
 #endif
   stats.blockpurelits++;
-  LOG ("found pure literal %d", lit);
+  LOG("found pure literal %d", lit);
 
   int64_t pured = 0;
 
-  for (const auto & c : pos) {
-    if (c->garbage) continue;
-    assert (!c->redundant);
-    LOG (c, "pure literal %d in", lit);
-    blocker.reschedule.push_back (c);
-    external->push_clause_on_extension_stack (c, lit);
+  for (const auto &c : pos) {
+    if (c->garbage)
+      continue;
+    assert(!c->redundant);
+    LOG(c, "pure literal %d in", lit);
+    blocker.reschedule.push_back(c);
+    external->push_clause_on_extension_stack(c, lit);
     stats.blockpured++;
-    mark_garbage (c);
+    mark_garbage(c);
     pured++;
   }
 
-  erase_vector (pos);
-  erase_vector (nos);
+  erase_vector(pos);
+  erase_vector(nos);
 
-  mark_pure (lit);
+  mark_pure(lit);
   stats.blockpured++;
-  LOG ("blocking %" PRId64 " clauses on pure literal %d", pured, lit);
+  LOG("blocking %" PRId64 " clauses on pure literal %d", pured, lit);
 }
 
 /*------------------------------------------------------------------------*/
@@ -266,93 +284,100 @@ void Internal::block_pure_literal (Blocker & blocker, int lit)
 // instead of marking all the positive clauses with 'lit' one after the
 // other and then resolving against the negative clause.
 
-void
-Internal::block_literal_with_one_negative_occ (Blocker & blocker, int lit)
-{
-  assert (active (lit));
-  assert (!frozen (lit));
-  assert (noccs (lit) > 0);
-  assert (noccs (-lit) == 1);
+void Internal::block_literal_with_one_negative_occ(Blocker &blocker, int lit) {
+  assert(active(lit));
+  assert(!frozen(lit));
+  assert(noccs(lit) > 0);
+  assert(noccs(-lit) == 1);
 
-  Occs & nos = occs (-lit);
-  assert (nos.size () >= 1);
+  Occs &nos = occs(-lit);
+  assert(nos.size() >= 1);
 
-  Clause * d = 0;
-  for (const auto & c : nos) {
-    if (c->garbage) continue;
-    assert (!d);
+  Clause *d = 0;
+  for (const auto &c : nos) {
+    if (c->garbage)
+      continue;
+    assert(!d);
     d = c;
 #ifndef NDEBUG
     break;
 #endif
   }
-  assert (d);
-  nos.resize (1);
+  assert(d);
+  nos.resize(1);
   nos[0] = d;
 
   if (d && d->size > opts.blockmaxclslim) {
-    LOG (d, "skipped common antecedent");
+    LOG(d, "skipped common antecedent");
     return;
   }
 
-  assert (!d->garbage);
-  assert (!d->redundant);
-  assert (d->size <= opts.blockmaxclslim);
+  assert(!d->garbage);
+  assert(!d->redundant);
+  assert(d->size <= opts.blockmaxclslim);
 
-  LOG (d, "common %d antecedent", lit);
-  mark (d);
+  LOG(d, "common %d antecedent", lit);
+  mark(d);
 
   int64_t blocked = 0, skipped = 0;
 
-  Occs & pos = occs (lit);
+  Occs &pos = occs(lit);
 
   // Again no 'auto' since 'pos' is update during traversal.
   //
-  const auto eop = pos.end ();
-  auto j = pos.begin (), i = j;
+  const auto eop = pos.end();
+  auto j = pos.begin(), i = j;
 
-  for (; i != eop; i++)
-  {
-    Clause * c = *j++ = *i;
+  for (; i != eop; i++) {
+    Clause *c = *j++ = *i;
 
-    if (c->garbage) { j--; continue; }
-    if (c->size > opts.blockmaxclslim) { skipped++; continue; }
-    if (c->size < opts.blockminclslim) { skipped++; continue; }
+    if (c->garbage) {
+      j--;
+      continue;
+    }
+    if (c->size > opts.blockmaxclslim) {
+      skipped++;
+      continue;
+    }
+    if (c->size < opts.blockminclslim) {
+      skipped++;
+      continue;
+    }
 
-    LOG (c, "trying to block on %d", lit);
+    LOG(c, "trying to block on %d", lit);
 
     // We use the same literal move-to-front strategy as in
     // 'is_blocked_clause'.  See there for more explanations.
 
-    int prev_other = 0;  // Previous non-tautological literal.
+    int prev_other = 0; // Previous non-tautological literal.
 
     // No 'auto' since literals of 'c' are updated during traversal.
     //
-    const const_literal_iterator end_of_c = c->end ();
+    const const_literal_iterator end_of_c = c->end();
     literal_iterator l;
 
-    for (l = c->begin (); l != end_of_c; l++)
-    {
+    for (l = c->begin(); l != end_of_c; l++) {
       const int other = *l;
       *l = prev_other;
       prev_other = other;
-      if (other == lit) continue;
-      assert (other != -lit);
-      assert (active (other));
-      assert (!val (other));
-      if (marked (other) < 0) {
-        LOG ("found tautological literal %d", other);
+      if (other == lit)
+        continue;
+      assert(other != -lit);
+      assert(active(other));
+      assert(!val(other));
+      if (marked(other) < 0) {
+        LOG("found tautological literal %d", other);
         c->literals[0] = other; // Move to front of 'c'.
         break;
       }
     }
 
     if (l == end_of_c) {
-      LOG ("no tautological literal found");
+      LOG("no tautological literal found");
 
       // Restore old literal order in the clause because.
 
-      const const_literal_iterator begin_of_c = c->begin ();
+      const const_literal_iterator begin_of_c = c->begin();
       while (l-- != begin_of_c) {
         const int other = *l;
         *l = prev_other;
@@ -363,19 +388,22 @@ Internal::block_literal_with_one_negative_occ (Blocker & blocker, int lit)
     }
 
     blocked++;
-    LOG (c, "blocked");
-    external->push_clause_on_extension_stack (c, lit);
-    blocker.reschedule.push_back (c);
-    mark_garbage (c);
+    LOG(c, "blocked");
+    external->push_clause_on_extension_stack(c, lit);
+    blocker.reschedule.push_back(c);
+    mark_garbage(c);
     j--;
   }
-  if (j == pos.begin ()) erase_vector (pos);
-  else pos.resize (j - pos.begin ());
+  if (j == pos.begin())
+    erase_vector(pos);
+  else
+    pos.resize(j - pos.begin());
 
   stats.blocked += blocked;
-  LOG ("blocked %" PRId64 " clauses on %d (skipped %" PRId64 ")", blocked, lit, skipped);
+  LOG("blocked %" PRId64 " clauses on %d (skipped %" PRId64 ")", blocked, lit,
+      skipped);
 
-  unmark (d);
+  unmark(d);
 }
 
 /*------------------------------------------------------------------------*/
@@ -384,51 +412,62 @@ Internal::block_literal_with_one_negative_occ (Blocker & blocker, int lit)
 // be blocked by 'lit'.  Filter out too large and small clauses and which do
 // not have any negated other literal in any of the clauses with '-lit'.
 
-size_t Internal::block_candidates (Blocker & blocker, int lit) {
+size_t Internal::block_candidates(Blocker &blocker, int lit) {
 
-  assert (blocker.candidates.empty ());
+  assert(blocker.candidates.empty());
 
-  Occs & pos = occs (lit);      // Positive occurrences of 'lit'.
-  Occs & nos = occs (-lit);
+  Occs &pos = occs(lit); // Positive occurrences of 'lit'.
+  Occs &nos = occs(-lit);
 
-  assert ((size_t) noccs (lit) <= pos.size ());
-  assert ((size_t) noccs (-lit) == nos.size ());  // Already flushed.
+  assert((size_t)noccs(lit) <= pos.size());
+  assert((size_t)noccs(-lit) == nos.size()); // Already flushed.
 
   // Mark all literals in clauses with '-lit'.  Note that 'mark2' uses
   // separate bits for 'lit' and '-lit'.
   //
-  for (const auto & c : nos) mark2 (c);
+  for (const auto &c : nos)
+    mark2(c);
 
-  const auto eop = pos.end ();
-  auto j = pos.begin (), i = j;
+  const auto eop = pos.end();
+  auto j = pos.begin(), i = j;
 
-  for (; i != eop; i++)
-  {
-    Clause * c = *j++ = *i;
-    if (c->garbage) { j--; continue; }
-    assert (!c->redundant);
-    if (c->size > opts.blockmaxclslim) continue;
-    if (c->size < opts.blockminclslim) continue;
-    const const_literal_iterator eoc = c->end ();
-    const_literal_iterator l;
-    for (l = c->begin (); l != eoc; l++) {
-      const int other = *l;
-      if (other == lit) continue;
-      assert (other != -lit);
-      assert (active (other));
-      assert (!val (other));
-      if (marked2 (-other)) break;
+  for (; i != eop; i++) {
+    Clause *c = *j++ = *i;
+    if (c->garbage) {
+      j--;
+      continue;
     }
-    if (l != eoc) blocker.candidates.push_back (c);
+    assert(!c->redundant);
+    if (c->size > opts.blockmaxclslim)
+      continue;
+    if (c->size < opts.blockminclslim)
+      continue;
+    const const_literal_iterator eoc = c->end();
+    const_literal_iterator l;
+    for (l = c->begin(); l != eoc; l++) {
+      const int other = *l;
+      if (other == lit)
+        continue;
+      assert(other != -lit);
+      assert(active(other));
+      assert(!val(other));
+      if (marked2(-other))
+        break;
+    }
+    if (l != eoc)
+      blocker.candidates.push_back(c);
   }
-  if (j == pos.begin ()) erase_vector (pos);
-  else pos.resize (j - pos.begin ());
+  if (j == pos.begin())
+    erase_vector(pos);
+  else
+    pos.resize(j - pos.begin());
 
-  assert (pos.size () == (size_t) noccs (lit)); // Now also flushed.
+  assert(pos.size() == (size_t)noccs(lit)); // Now also flushed.
 
-  for (const auto & c : nos) unmark (c);
+  for (const auto &c : nos)
+    unmark(c);
 
-  return blocker.candidates.size ();
+  return blocker.candidates.size();
 }
 
 /*------------------------------------------------------------------------*/
@@ -438,38 +477,42 @@ size_t Internal::block_candidates (Blocker & blocker, int lit) {
 // blocked on 'lit' since all candidates would produce a non-tautological
 // resolvent with that clause.
 
-Clause * Internal::block_impossible (Blocker & blocker, int lit)
-{
-  assert (noccs (-lit) > 1);
-  assert (blocker.candidates.size () > 1);
+Clause *Internal::block_impossible(Blocker &blocker, int lit) {
+  assert(noccs(-lit) > 1);
+  assert(blocker.candidates.size() > 1);
 
-  for (const auto & c : blocker.candidates) mark2 (c);
+  for (const auto &c : blocker.candidates)
+    mark2(c);
 
-  Occs & nos = occs (-lit);
-  Clause * res = 0;
+  Occs &nos = occs(-lit);
+  Clause *res = 0;
 
-  for (const auto & c : nos) {
-    assert (!c->garbage);
-    assert (!c->redundant);
-    assert (c->size <= opts.blockmaxclslim);
-    const const_literal_iterator eoc = c->end ();
+  for (const auto &c : nos) {
+    assert(!c->garbage);
+    assert(!c->redundant);
+    assert(c->size <= opts.blockmaxclslim);
+    const const_literal_iterator eoc = c->end();
     const_literal_iterator l;
-    for (l = c->begin (); l != eoc; l++) {
+    for (l = c->begin(); l != eoc; l++) {
       const int other = *l;
-      if (other == -lit) continue;
-      assert (other != lit);
-      assert (active (other));
-      assert (!val (other));
-      if (marked2 (-other)) break;
+      if (other == -lit)
+        continue;
+      assert(other != lit);
+      assert(active(other));
+      assert(!val(other));
+      if (marked2(-other))
+        break;
     }
-    if (l == eoc) res = c;
+    if (l == eoc)
+      res = c;
   }
 
-  for (const auto & c : blocker.candidates) unmark (c);
+  for (const auto &c : blocker.candidates)
+    unmark(c);
 
   if (res) {
-    LOG (res, "common non-tautological resolvent producing");
-    blocker.candidates.clear ();
+    LOG(res, "common non-tautological resolvent producing");
+    blocker.candidates.clear();
   }
 
   return res;
@@ -479,273 +522,279 @@ Clause * Internal::block_impossible (Blocker & blocker, int lit)
 
 // In the general case we have at least two negative occurrences.
 
-void Internal::block_literal_with_at_least_two_negative_occs (
-  Blocker & blocker,
-  int lit)
-{
-  assert (active (lit));
-  assert (!frozen (lit));
-  assert (noccs (lit) > 0);
-  assert (noccs (-lit) > 1);
+void Internal::block_literal_with_at_least_two_negative_occs(Blocker &blocker,
+                                                             int lit) {
+  assert(active(lit));
+  assert(!frozen(lit));
+  assert(noccs(lit) > 0);
+  assert(noccs(-lit) > 1);
 
-  Occs & nos = occs (-lit);
-  assert ((size_t) noccs (-lit) <= nos.size ());
+  Occs &nos = occs(-lit);
+  assert((size_t)noccs(-lit) <= nos.size());
 
   int max_size = 0;
 
   // Flush all garbage clauses in occurrence list 'nos' of '-lit' and
   // determine the maximum size of negative clauses (with '-lit').
   //
-  const auto eon = nos.end ();
-  auto j = nos.begin (), i = j;
-  for (; i != eon; i++)
-  {
-    Clause * c = *j++ = *i;
-    if (c->garbage) j--;
-    else if (c->size > max_size) max_size = c->size;
+  const auto eon = nos.end();
+  auto j = nos.begin(), i = j;
+  for (; i != eon; i++) {
+    Clause *c = *j++ = *i;
+    if (c->garbage)
+      j--;
+    else if (c->size > max_size)
+      max_size = c->size;
   }
-  if (j == nos.begin ()) erase_vector (nos);
-  else nos.resize (j - nos.begin ());
+  if (j == nos.begin())
+    erase_vector(nos);
+  else
+    nos.resize(j - nos.begin());
 
-  assert (nos.size () == (size_t) noccs (-lit));
-  assert (nos.size () > 1);
+  assert(nos.size() == (size_t)noccs(-lit));
+  assert(nos.size() > 1);
 
   // If the maximum size of a negative clause (with '-lit') exceeds the
   // maximum clause size limit ignore this candidate literal.
   //
   if (max_size > opts.blockmaxclslim) {
-    LOG ("maximum size %d of clauses with %d exceeds clause size limit %d",
-      max_size, -lit, opts.blockmaxclslim);
+    LOG("maximum size %d of clauses with %d exceeds clause size limit %d",
+        max_size, -lit, opts.blockmaxclslim);
     return;
   }
 
-  LOG ("maximum size %d of clauses with %d", max_size, -lit);
+  LOG("maximum size %d of clauses with %d", max_size, -lit);
 
   // We filter candidate clauses with positive occurrence of 'lit' in
   // 'blocker.candidates' and return if no candidate clause remains.
   // Candidates should be small enough and should have at least one literal
   // which occurs negated in one of the clauses with '-lit'.
   //
-  size_t candidates = block_candidates (blocker, lit);
+  size_t candidates = block_candidates(blocker, lit);
   if (!candidates) {
-    LOG ("no candidate clauses found");
+    LOG("no candidate clauses found");
     return;
   }
 
-  LOG ("found %zd candidate clauses", candidates);
+  LOG("found %zd candidate clauses", candidates);
 
   // We further search for a clause with '-lit' that has no literal
   // negated in any of the candidate clauses (except 'lit').  If such a
   // clause exists, we know that none of the candidates is blocked.
   //
-  if (candidates > 1 && block_impossible (blocker, lit)) {
-    LOG ("impossible to block any candidate clause on %d", lit);
-    assert (blocker.candidates.empty ());
+  if (candidates > 1 && block_impossible(blocker, lit)) {
+    LOG("impossible to block any candidate clause on %d", lit);
+    assert(blocker.candidates.empty());
     return;
   }
 
-  LOG ("trying to block %zd clauses out of %" PRId64 " with literal %d",
-    candidates, noccs (lit), lit);
+  LOG("trying to block %zd clauses out of %" PRId64 " with literal %d",
+      candidates, noccs(lit), lit);
 
   int64_t blocked = 0;
 
   // Go over all remaining candidates and try to block them on 'lit'.
   //
-  for (const auto & c : blocker.candidates) {
-    assert (!c->garbage);
-    assert (!c->redundant);
-    if (!is_blocked_clause (c, lit)) continue;
+  for (const auto &c : blocker.candidates) {
+    assert(!c->garbage);
+    assert(!c->redundant);
+    if (!is_blocked_clause(c, lit))
+      continue;
     blocked++;
-    LOG (c, "blocked");
-    external->push_clause_on_extension_stack (c, lit);
-    blocker.reschedule.push_back (c);
-    mark_garbage (c);
+    LOG(c, "blocked");
+    external->push_clause_on_extension_stack(c, lit);
+    blocker.reschedule.push_back(c);
+    mark_garbage(c);
   }
 
-  LOG ("blocked %" PRId64 " clauses on %d out of %zd candidates in %zd occurrences",
-    blocked, lit, blocker.candidates.size (), occs (lit).size ());
+  LOG("blocked %" PRId64
+      " clauses on %d out of %zd candidates in %zd occurrences",
+      blocked, lit, blocker.candidates.size(), occs(lit).size());
 
-  blocker.candidates.clear ();
+  blocker.candidates.clear();
   stats.blocked += blocked;
-  if (blocked) flush_occs (lit);
+  if (blocked)
+    flush_occs(lit);
 }
 
 /*------------------------------------------------------------------------*/
 
 // Reschedule literals in a clause (except 'lit') which was blocked.
 
-void
-Internal::block_reschedule_clause (Blocker & blocker, int lit, Clause * c)
-{
+void Internal::block_reschedule_clause(Blocker &blocker, int lit, Clause *c) {
 #ifdef NDEBUG
-  (void) lit;
+  (void)lit;
 #endif
-  assert (c->garbage);
+  assert(c->garbage);
 
-  for (const auto & other : *c) {
+  for (const auto &other : *c) {
 
-    int64_t & n = noccs (other);
-    assert (n > 0);
+    int64_t &n = noccs(other);
+    assert(n > 0);
     n--;
 
-    LOG ("updating %d with %" PRId64 " positive and %" PRId64 " negative occurrences",
-      other, noccs (other), noccs (-other));
+    LOG("updating %d with %" PRId64 " positive and %" PRId64
+        " negative occurrences",
+        other, noccs(other), noccs(-other));
 
-    if (blocker.schedule.contains (vlit (-other)))
-      blocker.schedule.update (vlit (-other));
-    else if (active (other) &&
-             !frozen (other) &&
-             !marked_skip (-other)) {
-      LOG ("rescheduling to block clauses on %d", -other);
-      blocker.schedule.push_back (vlit (-other));
+    if (blocker.schedule.contains(vlit(-other)))
+      blocker.schedule.update(vlit(-other));
+    else if (active(other) && !frozen(other) && !marked_skip(-other)) {
+      LOG("rescheduling to block clauses on %d", -other);
+      blocker.schedule.push_back(vlit(-other));
     }
 
-    if (blocker.schedule.contains (vlit (other))) {
-      assert (other != lit);
-      blocker.schedule.update (vlit (other));
+    if (blocker.schedule.contains(vlit(other))) {
+      assert(other != lit);
+      blocker.schedule.update(vlit(other));
     }
   }
 }
 
 // Reschedule all literals in clauses blocked by 'lit' (except 'lit').
 
-void Internal::block_reschedule (Blocker & blocker, int lit)
-{
-  while (!blocker.reschedule.empty ()) {
-    Clause * c = blocker.reschedule.back ();
-    blocker.reschedule.pop_back ();
-    block_reschedule_clause (blocker, lit, c);
+void Internal::block_reschedule(Blocker &blocker, int lit) {
+  while (!blocker.reschedule.empty()) {
+    Clause *c = blocker.reschedule.back();
+    blocker.reschedule.pop_back();
+    block_reschedule_clause(blocker, lit, c);
   }
 }
 
 /*------------------------------------------------------------------------*/
 
-void Internal::block_literal (Blocker & blocker, int lit)
-{
-  assert (!marked_skip (lit));
+void Internal::block_literal(Blocker &blocker, int lit) {
+  assert(!marked_skip(lit));
 
-  if (!active (lit)) return; // Pure literal '-lit'.
-  if (frozen (lit)) return;
+  if (!active(lit))
+    return; // Pure literal '-lit'.
+  if (frozen(lit))
+    return;
 
-  assert (!val (lit));
+  assert(!val(lit));
 
   // If the maximum number of a negative clauses (with '-lit') exceeds the
   // occurrence limit ignore this candidate literal.
   //
-  if (noccs (-lit) > opts.blockocclim) return;
+  if (noccs(-lit) > opts.blockocclim)
+    return;
 
-  LOG ("blocking literal candidate %d "
-    "with %" PRId64 " positive and %" PRId64 " negative occurrences",
-    lit, noccs (lit), noccs (-lit));
+  LOG("blocking literal candidate %d "
+      "with %" PRId64 " positive and %" PRId64 " negative occurrences",
+      lit, noccs(lit), noccs(-lit));
 
   stats.blockcands++;
 
-  assert (blocker.reschedule.empty ());
-  assert (blocker.candidates.empty ());
+  assert(blocker.reschedule.empty());
+  assert(blocker.candidates.empty());
 
-  if (!noccs (-lit)) block_pure_literal (blocker, lit);
-  else if (!noccs (lit)) {
+  if (!noccs(-lit))
+    block_pure_literal(blocker, lit);
+  else if (!noccs(lit)) {
     // Rare situation, where the clause length limit was hit for 'lit' and
     // '-lit' is skipped and then it becomes pure.  Can be ignored.  We also
     // so it once happing for a 'elimboundmin=-1' and zero positive and one
     // negative occurrence.
-  } else if (noccs (-lit) == 1)
-    block_literal_with_one_negative_occ (blocker, lit);
+  } else if (noccs(-lit) == 1)
+    block_literal_with_one_negative_occ(blocker, lit);
   else
-    block_literal_with_at_least_two_negative_occs (blocker, lit);
+    block_literal_with_at_least_two_negative_occs(blocker, lit);
 
   // Done with blocked clause elimination on this literal and we do not
   // have to try blocked clause elimination on it again until irredundant
   // clauses with its negation are removed.
   //
-  assert (!frozen (lit));       // just to be sure ...
-  unmark_block (lit);
+  assert(!frozen(lit)); // just to be sure ...
+  unmark_block(lit);
 }
 
 /*------------------------------------------------------------------------*/
 
-bool Internal::block () {
+bool Internal::block() {
 
-  if (!opts.block) return false;
-  if (unsat) return false;
-  if (!stats.current.irredundant) return false;
-  if (terminated_asynchronously ()) return false;
+  if (!opts.block)
+    return false;
+  if (unsat)
+    return false;
+  if (!stats.current.irredundant)
+    return false;
+  if (terminated_asynchronously())
+    return false;
 
-  if (propagated < trail.size ()) {
-    LOG ("need to propagate %zd units first", trail.size () - propagated);
-    init_watches ();
-    connect_watches ();
-    if (!propagate ()) {
-      LOG ("propagating units results in empty clause");
-      learn_empty_clause ();
-      assert (unsat);
+  if (propagated < trail.size()) {
+    LOG("need to propagate %zd units first", trail.size() - propagated);
+    init_watches();
+    connect_watches();
+    if (!propagate()) {
+      LOG("propagating units results in empty clause");
+      learn_empty_clause();
+      assert(unsat);
     }
-    clear_watches ();
-    reset_watches ();
-    if (unsat) return false;
+    clear_watches();
+    reset_watches();
+    if (unsat)
+      return false;
   }
 
-  START_SIMPLIFIER (block, BLOCK);
+  START_SIMPLIFIER(block, BLOCK);
 
   stats.blockings++;
 
-  LOG ("block-%" PRId64 "", stats.blockings);
+  LOG("block-%" PRId64 "", stats.blockings);
 
-  assert (!level);
-  assert (!watching ());
-  assert (!occurring ());
+  assert(!level);
+  assert(!watching());
+  assert(!occurring());
 
-  mark_satisfied_clauses_as_garbage ();
+  mark_satisfied_clauses_as_garbage();
 
-  init_occs ();  // Occurrence lists for all literals.
-  init_noccs (); // Number of occurrences to avoid flushing garbage clauses.
+  init_occs();  // Occurrence lists for all literals.
+  init_noccs(); // Number of occurrences to avoid flushing garbage clauses.
 
-  Blocker blocker (this);
-  block_schedule (blocker);
+  Blocker blocker(this);
+  block_schedule(blocker);
 
   int64_t blocked = stats.blocked;
   int64_t resolutions = stats.blockres;
   int64_t purelits = stats.blockpurelits;
   int64_t pured = stats.blockpured;
 
-  while (!terminated_asynchronously () &&
-         !blocker.schedule.empty ()) {
-    int lit = u2i (blocker.schedule.front ());
-    blocker.schedule.pop_front ();
-    block_literal (blocker, lit);
-    block_reschedule (blocker, lit);
+  while (!terminated_asynchronously() && !blocker.schedule.empty()) {
+    int lit = u2i(blocker.schedule.front());
+    blocker.schedule.pop_front();
+    block_literal(blocker, lit);
+    block_reschedule(blocker, lit);
   }
 
-  blocker.erase ();
-  reset_noccs ();
-  reset_occs ();
+  blocker.erase();
+  reset_noccs();
+  reset_occs();
 
   resolutions = stats.blockres - resolutions;
   blocked = stats.blocked - blocked;
 
-  PHASE ("block", stats.blockings,
-    "blocked %" PRId64 " clauses in %" PRId64 " resolutions",
-    blocked, resolutions);
+  PHASE("block", stats.blockings,
+        "blocked %" PRId64 " clauses in %" PRId64 " resolutions", blocked,
+        resolutions);
 
   pured = stats.blockpured - pured;
   purelits = stats.blockpurelits - purelits;
 
   if (pured)
-    mark_redundant_clauses_with_eliminated_variables_as_garbage ();
+    mark_redundant_clauses_with_eliminated_variables_as_garbage();
 
   if (purelits)
-    PHASE ("block", stats.blockings,
-      "found %" PRId64 " pure literals in %" PRId64 " clauses",
-      purelits, pured);
+    PHASE("block", stats.blockings,
+          "found %" PRId64 " pure literals in %" PRId64 " clauses", purelits,
+          pured);
   else
-    PHASE ("block", stats.blockings,
-      "no pure literals found");
+    PHASE("block", stats.blockings, "no pure literals found");
 
-  report ('b', !opts.reportall && !blocked);
+  report('b', !opts.reportall && !blocked);
 
-  STOP_SIMPLIFIER (block, BLOCK);
+  STOP_SIMPLIFIER(block, BLOCK);
 
   return blocked;
 }
 
-}
+} // namespace CaDiCaL

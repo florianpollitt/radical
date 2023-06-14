@@ -11,25 +11,26 @@ namespace CaDiCaL {
 struct Clause;
 using namespace std;
 
-typedef vector<Clause*> Occs;
+typedef vector<Clause *> Occs;
 
-inline void shrink_occs (Occs & os) { shrink_vector (os); }
-inline void erase_occs (Occs & os) { erase_vector (os); }
+inline void shrink_occs(Occs &os) { shrink_vector(os); }
+inline void erase_occs(Occs &os) { erase_vector(os); }
 
-inline void remove_occs (Occs & os, Clause * c) {
-  const auto end = os.end ();
-  auto i = os.begin ();
+inline void remove_occs(Occs &os, Clause *c) {
+  const auto end = os.end();
+  auto i = os.begin();
   for (auto j = i; j != end; j++) {
-    const Clause * d = *i++ = *j;
-    if (c == d) i--;
+    const Clause *d = *i++ = *j;
+    if (c == d)
+      i--;
   }
-  assert (i + 1 == end);
-  os.resize (i - os.begin ());
+  assert(i + 1 == end);
+  os.resize(i - os.begin());
 }
 
 typedef Occs::iterator occs_iterator;
 typedef Occs::const_iterator const_occs_iterator;
 
-}
+} // namespace CaDiCaL
 
 #endif

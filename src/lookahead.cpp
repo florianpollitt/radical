@@ -7,18 +7,15 @@ struct literal_occ {
   int count;
   bool operator<(const literal_occ &locc) const {
     return (count > locc.count) || (count == locc.count && lit < locc.lit);
-
   }
   literal_occ operator++() {
     ++count;
     return *this;
-
   }
-
 };
 
 std::vector<int> Internal::lookahead_populate_locc() {
-  std::vector<literal_occ> loccs((std::size_t)max_var+1);
+  std::vector<literal_occ> loccs((std::size_t)max_var + 1);
   for (std::size_t lit = 0; lit < loccs.size(); ++lit) {
     loccs[lit].lit = lit;
   }
@@ -33,7 +30,6 @@ std::vector<int> Internal::lookahead_populate_locc() {
   for (const auto &locc : loccs)
     locc_map.push_back(locc.lit);
   return locc_map;
-
 }
 
 int Internal::lookahead_locc(const std::vector<int> &loccs) {
@@ -41,29 +37,29 @@ int Internal::lookahead_locc(const std::vector<int> &loccs) {
     if (active(abs(lit)) && !assumed(lit) && !assumed(-lit) && !val(lit))
       return lit;
   return 0;
+}
 
-  }
-
-  // This calculates the literal that appears the most often reusing the
-  // available datastructures and iterating over the clause set. This is too
-  // slow to be called iteratively. A faster (but inexact) version is
-  // lookahead_populate_loc and lookahead_loc.
-int Internal::most_occurring_literal () {
-  init_noccs ();
-  for (const auto & c : clauses)
+// This calculates the literal that appears the most often reusing the
+// available datastructures and iterating over the clause set. This is too
+// slow to be called iteratively. A faster (but inexact) version is
+// lookahead_populate_loc and lookahead_loc.
+int Internal::most_occurring_literal() {
+  init_noccs();
+  for (const auto &c : clauses)
     if (!c->redundant)
-      for (const auto & lit : *c)
-        if (active (lit))
-          noccs (lit)++;
+      for (const auto &lit : *c)
+        if (active(lit))
+          noccs(lit)++;
   int64_t max_noccs = 0;
   int res = 0;
 
-  if(unsat)
+  if (unsat)
     return INT_MIN;
 
   propagate();
   for (int idx = 1; idx <= max_var; idx++) {
-    if (!active (idx) || assumed(idx) || assumed(-idx) || val(idx)) continue;
+    if (!active(idx) || assumed(idx) || assumed(-idx) || val(idx))
+      continue;
     for (int sign = -1; sign <= 1; sign += 2) {
       const int lit = sign * idx;
       if (!active(lit))
@@ -75,8 +71,8 @@ int Internal::most_occurring_literal () {
       res = lit;
     }
   }
-  MSG ("maximum occurrence %" PRId64 " of literal %d", max_noccs, res);
-  reset_noccs ();
+  MSG("maximum occurrence %" PRId64 " of literal %d", max_noccs, res);
+  reset_noccs();
   return res;
 }
 
@@ -85,71 +81,77 @@ int Internal::most_occurring_literal () {
 // less frequently come first.  Probes are taken from the back of the stack.
 
 struct probe_negated_noccs_rank {
-  Internal * internal;
-  probe_negated_noccs_rank (Internal * i) : internal (i) { }
+  Internal *internal;
+  probe_negated_noccs_rank(Internal *i) : internal(i) {}
   typedef size_t Type;
-  Type operator () (int a) const { return internal->noccs (-a); }
+  Type operator()(int a) const { return internal->noccs(-a); }
 };
 
 // Follow the ideas in 'generate_probes' but flush non root probes and
 // reorder remaining probes.
 
-void Internal::lookahead_flush_probes () {
+void Internal::lookahead_flush_probes() {
 
-  assert (!probes.empty ());
+  assert(!probes.empty());
 
-  init_noccs ();
-  for (const auto & c : clauses) {
+  init_noccs();
+  for (const auto &c : clauses) {
     int a, b;
-    if (!is_binary_clause (c, a, b)) continue;
-    noccs (a)++;
-    noccs (b)++;
+    if (!is_binary_clause(c, a, b))
+      continue;
+    noccs(a)++;
+    noccs(b)++;
   }
 
-  const auto eop = probes.end ();
-  auto j = probes.begin ();
+  const auto eop = probes.end();
+  auto j = probes.begin();
   for (auto i = j; i != eop; i++) {
     int lit = *i;
-    if (!active (lit)) continue;
-    const bool have_pos_bin_occs = noccs (lit) > 0;
-    const bool have_neg_bin_occs = noccs (-lit) > 0;
-    if (have_pos_bin_occs == have_neg_bin_occs) continue;
-    if (have_pos_bin_occs) lit = -lit;
-    assert (!noccs (lit)), assert (noccs (-lit) > 0);
-    if (propfixed (lit) >= stats.all.fixed) continue;
-    MSG ("keeping probe %d negated occs %" PRId64 "", lit, noccs (-lit));
+    if (!active(lit))
+      continue;
+    const bool have_pos_bin_occs = noccs(lit) > 0;
+    const bool have_neg_bin_occs = noccs(-lit) > 0;
+    if (have_pos_bin_occs == have_neg_bin_occs)
+      continue;
+    if (have_pos_bin_occs)
+      lit = -lit;
+    assert(!noccs(lit)), assert(noccs(-lit) > 0);
+    if (propfixed(lit) >= stats.all.fixed)
+      continue;
+    MSG("keeping probe %d negated occs %" PRId64 "", lit, noccs(-lit));
     *j++ = lit;
   }
-  size_t remain = j - probes.begin ();
+  size_t remain = j - probes.begin();
 #ifndef QUIET
-  size_t flushed = probes.size () - remain;
+  size_t flushed = probes.size() - remain;
 #endif
-  probes.resize (remain);
+  probes.resize(remain);
 
-  rsort (probes.begin (), probes.end (), probe_negated_noccs_rank (this));
+  rsort(probes.begin(), probes.end(), probe_negated_noccs_rank(this));
 
-  reset_noccs ();
-  shrink_vector (probes);
+  reset_noccs();
+  shrink_vector(probes);
 
-  PHASE ("probe-round", stats.probingrounds,
-    "flushed %zd literals %.0f%% remaining %zd",
-    flushed, percent (flushed, remain + flushed), remain);
+  PHASE("probe-round", stats.probingrounds,
+        "flushed %zd literals %.0f%% remaining %zd", flushed,
+        percent(flushed, remain + flushed), remain);
 }
 
-void Internal::lookahead_generate_probes () {
+void Internal::lookahead_generate_probes() {
 
-  assert (probes.empty ());
+  assert(probes.empty());
 
   // First determine all the literals which occur in binary clauses. It is
   // way faster to go over the clauses once, instead of walking the watch
   // lists for each literal.
   //
-  init_noccs ();
-  for (const auto & c : clauses) {
+  init_noccs();
+  for (const auto &c : clauses) {
     int a, b;
-    if (!is_binary_clause (c, a, b)) continue;
-    noccs (a)++;
-    noccs (b)++;
+    if (!is_binary_clause(c, a, b))
+      continue;
+    noccs(a)++;
+    noccs(b)++;
   }
 
   for (int idx = 1; idx <= max_var; idx++) {
@@ -163,8 +165,8 @@ void Internal::lookahead_generate_probes () {
     // 'decompose' is performed, because otherwise there might be 'cyclic
     // roots' which are not tried, i.e., -1 2 0, 1 -2 0, 1 2 3 0, 1 2 -3 0.
 
-    const bool have_pos_bin_occs = noccs (idx) > 0;
-    const bool have_neg_bin_occs = noccs (-idx) > 0;
+    const bool have_pos_bin_occs = noccs(idx) > 0;
+    const bool have_neg_bin_occs = noccs(-idx) > 0;
 
     // if (have_pos_bin_occs == have_neg_bin_occs) continue;
 
@@ -173,10 +175,11 @@ void Internal::lookahead_generate_probes () {
 
       // See the discussion where 'propfixed' is used below.
       //
-      if (propfixed (probe) >= stats.all.fixed) continue;
+      if (propfixed(probe) >= stats.all.fixed)
+        continue;
 
-      MSG ("scheduling probe %d negated occs %" PRId64 "", probe, noccs (-probe));
-      probes.push_back (probe);
+      MSG("scheduling probe %d negated occs %" PRId64 "", probe, noccs(-probe));
+      probes.push_back(probe);
     }
 
     if (have_neg_bin_occs) {
@@ -184,43 +187,44 @@ void Internal::lookahead_generate_probes () {
 
       // See the discussion where 'propfixed' is used below.
       //
-      if (propfixed (probe) >= stats.all.fixed) continue;
+      if (propfixed(probe) >= stats.all.fixed)
+        continue;
 
-      MSG ("scheduling probe %d negated occs %" PRId64 "",
-           probe, noccs (-probe));
-      probes.push_back (probe);
+      MSG("scheduling probe %d negated occs %" PRId64 "", probe, noccs(-probe));
+      probes.push_back(probe);
     }
   }
 
-  rsort (probes.begin (), probes.end (), probe_negated_noccs_rank (this));
+  rsort(probes.begin(), probes.end(), probe_negated_noccs_rank(this));
 
-  reset_noccs ();
-  shrink_vector (probes);
+  reset_noccs();
+  shrink_vector(probes);
 
-  PHASE ("probe-round", stats.probingrounds,
-    "scheduled %zd literals %.0f%%",
-    probes.size (), percent (probes.size (), 2*max_var));
+  PHASE("probe-round", stats.probingrounds, "scheduled %zd literals %.0f%%",
+        probes.size(), percent(probes.size(), 2 * max_var));
 }
 
-int Internal::lookahead_next_probe () {
+int Internal::lookahead_next_probe() {
 
   int generated = 0;
 
   for (;;) {
 
-    if (probes.empty ()) {
-      if (generated++) return 0;
-      lookahead_generate_probes ();
+    if (probes.empty()) {
+      if (generated++)
+        return 0;
+      lookahead_generate_probes();
     }
 
-    while (!probes.empty ()) {
+    while (!probes.empty()) {
 
-      int probe = probes.back ();
-      probes.pop_back ();
+      int probe = probes.back();
+      probes.pop_back();
 
       // Eliminated or assigned.
       //
-      if (!active (probe) || assumed(probe) || assumed (-probe)) continue;
+      if (!active(probe) || assumed(probe) || assumed(-probe))
+        continue;
 
       // There is now new unit since the last time we propagated this probe,
       // thus we propagated it before without obtaining a conflict and
@@ -230,26 +234,26 @@ int Internal::lookahead_next_probe () {
       // Alg. 4 in his JAIR article from 2002) and it has also been
       // contributed to the thesis work of Yacine Boufkhad.
       //
-      if (propfixed (probe) >= stats.all.fixed) continue;
+      if (propfixed(probe) >= stats.all.fixed)
+        continue;
 
       return probe;
     }
   }
 }
 
-bool non_tautological_cube (std::vector<int> cube) {
-  std::sort(begin(cube), end(cube), clause_lit_less_than ());
+bool non_tautological_cube(std::vector<int> cube) {
+  std::sort(begin(cube), end(cube), clause_lit_less_than());
 
-  for(size_t i = 0, j = 1; j < cube.size(); ++i, ++j)
-    if(cube[i] == cube[j])
+  for (size_t i = 0, j = 1; j < cube.size(); ++i, ++j)
+    if (cube[i] == cube[j])
       return false;
-    else if (cube[i] == - cube[j])
+    else if (cube[i] == -cube[j])
       return false;
     else if (cube[i] == 0)
       return false;
 
   return true;
-
 }
 
 bool Internal::terminating_asked() {
@@ -276,12 +280,12 @@ bool Internal::terminating_asked() {
 //
 int Internal::lookahead_probing() {
 
-  if (!active ())
+  if (!active())
     return 0;
 
-  MSG ("lookahead-probe-round %" PRId64
-       " without propagations limit and %zu assumptions",
-       stats.probingrounds, assumptions.size());
+  MSG("lookahead-probe-round %" PRId64
+      " without propagations limit and %zu assumptions",
+      stats.probingrounds, assumptions.size());
 
   termination_forced = false;
 
@@ -291,82 +295,82 @@ int Internal::lookahead_probing() {
 #endif
   int64_t old_hbrs = stats.hbrs;
 
-  if (unsat) return INT_MIN;
-  if (level) backtrack ();
-  if (!propagate ()) {
-    MSG ("empty clause before probing");
-    learn_empty_clause ();
+  if (unsat)
+    return INT_MIN;
+  if (level)
+    backtrack();
+  if (!propagate()) {
+    MSG("empty clause before probing");
+    learn_empty_clause();
     return INT_MIN;
   }
 
   if (terminating_asked())
     return most_occurring_literal();
 
-  decompose ();
+  decompose();
 
-  if (ternary ())       // If we derived a binary clause
-    decompose ();       // then start another round of ELS.
+  if (ternary()) // If we derived a binary clause
+    decompose(); // then start another round of ELS.
 
   // Remove duplicated binary clauses and perform in essence hyper unary
   // resolution, i.e., derive the unit '2' from '1 2' and '-1 2'.
   //
-  mark_duplicated_binary_clauses_as_garbage ();
+  mark_duplicated_binary_clauses_as_garbage();
 
   lim.conflicts = -1;
 
-  if (!probes.empty ()) lookahead_flush_probes ();
+  if (!probes.empty())
+    lookahead_flush_probes();
 
   // We reset 'propfixed' since there was at least another conflict thus
   // a new learned clause, which might produce new propagations (and hyper
   // binary resolvents).  During 'generate_probes' we keep the old value.
   //
   for (int idx = 1; idx <= max_var; idx++)
-    propfixed (idx) = propfixed (-idx) = -1;
+    propfixed(idx) = propfixed(-idx) = -1;
 
-  assert (unsat || propagated == trail.size ());
-  propagated = propagated2 = trail.size ();
+  assert(unsat || propagated == trail.size());
+  propagated = propagated2 = trail.size();
 
   int probe;
   int res = most_occurring_literal();
   int max_hbrs = -1;
 
-  set_mode (PROBE);
+  set_mode(PROBE);
 
-  MSG("unsat = %d, terminating_asked () = %d ", unsat, terminating_asked ());
-  init_probehbr_lrat ();
-  while (!unsat &&
-         !terminating_asked () &&
-         (probe = lookahead_next_probe ())) {
+  MSG("unsat = %d, terminating_asked () = %d ", unsat, terminating_asked());
+  init_probehbr_lrat();
+  while (!unsat && !terminating_asked() && (probe = lookahead_next_probe())) {
     stats.probed++;
     int hbrs;
 
-    probe_assign_decision (probe);
-    if (probe_propagate ())
+    probe_assign_decision(probe);
+    if (probe_propagate())
       hbrs = trail.size(), backtrack();
-    else hbrs = 0, failed_literal (probe);
-    clean_probehbr_lrat ();
+    else
+      hbrs = 0, failed_literal(probe);
+    clean_probehbr_lrat();
     if (max_hbrs < hbrs ||
-        (max_hbrs == hbrs &&
-         internal->bumped(probe) > internal->bumped(res))) {
+        (max_hbrs == hbrs && internal->bumped(probe) > internal->bumped(res))) {
       res = probe;
       max_hbrs = hbrs;
     }
   }
 
-  reset_mode (PROBE);
+  reset_mode(PROBE);
 
   if (unsat) {
-    MSG ("probing derived empty clause");
+    MSG("probing derived empty clause");
     res = INT_MIN;
-  }
-  else if (propagated < trail.size ()) {
-    MSG ("probing produced %zd units",
-         (size_t)(trail.size () - propagated));
-    if (!propagate ()) {
-      MSG ("propagating units after probing results in empty clause");
-      learn_empty_clause ();
+  } else if (propagated < trail.size()) {
+    MSG("probing produced %zd units", (size_t)(trail.size() - propagated));
+    if (!propagate()) {
+      MSG("propagating units after probing results in empty clause");
+      learn_empty_clause();
       res = INT_MIN;
-    } else sort_watches ();
+    } else
+      sort_watches();
   }
 
 #ifndef QUIET
@@ -375,16 +379,15 @@ int Internal::lookahead_probing() {
 #endif
   int64_t hbrs = stats.hbrs - old_hbrs;
 
-  MSG ("lookahead-probe-round %" PRId64 " probed %" PRId64
-       " and found %d failed literals",
-       stats.probingrounds,
-       probed, failed);
+  MSG("lookahead-probe-round %" PRId64 " probed %" PRId64
+      " and found %d failed literals",
+      stats.probingrounds, probed, failed);
 
   if (hbrs)
-    PHASE ("lookahead-probe-round", stats.probingrounds,
-      "found %" PRId64 " hyper binary resolvents", hbrs);
+    PHASE("lookahead-probe-round", stats.probingrounds,
+          "found %" PRId64 " hyper binary resolvents", hbrs);
 
-  MSG ("lookahead literal %d with %d\n", res, max_hbrs);
+  MSG("lookahead literal %d with %d\n", res, max_hbrs);
 
   return res;
 }
@@ -406,8 +409,8 @@ CubesWithStatus Internal::generate_cubes(int depth, int min_depth) {
   termination_forced = false;
   int res = already_solved();
   if (res == 0)
-   res = restore_clauses();
-  if(unsat)
+    res = restore_clauses();
+  if (unsat)
     res = 10;
   if (res != 0)
     res = solve(true);
@@ -422,20 +425,20 @@ CubesWithStatus Internal::generate_cubes(int depth, int min_depth) {
   }
 
   reset_limits();
-  MSG ("generate cubes with %zu assumptions\n", assumptions.size());
+  MSG("generate cubes with %zu assumptions\n", assumptions.size());
 
   assert(ntab.empty());
   std::vector<int> current_assumptions{assumptions};
-  std::vector<std::vector<int>> cubes {{assumptions}};
+  std::vector<std::vector<int>> cubes{{assumptions}};
   auto loccs{lookahead_populate_locc()};
   LOG("loccs populated\n");
   assert(ntab.empty());
 
   for (int i = 0; i < depth; ++i) {
-    LOG("Probing at depth %i, currently %zu have been generated",
-        i, cubes.size());
-    std::vector<std::vector<int>> cubes2 {std::move(cubes)};
-    cubes.clear ();
+    LOG("Probing at depth %i, currently %zu have been generated", i,
+        cubes.size());
+    std::vector<std::vector<int>> cubes2{std::move(cubes)};
+    cubes.clear();
 
     for (size_t j = 0; j < cubes2.size(); ++j) {
       assert(ntab.empty());
@@ -445,7 +448,7 @@ CubesWithStatus Internal::generate_cubes(int depth, int min_depth) {
         assume(lit);
       restore_clauses();
       propagate();
-        // preprocess_round(0); //uncomment maybe
+      // preprocess_round(0); //uncomment maybe
 
       if (unsat) {
         LOG("current cube is unsat; skipping");
@@ -453,8 +456,9 @@ CubesWithStatus Internal::generate_cubes(int depth, int min_depth) {
         continue;
       }
 
-      int res = terminating_asked()  ? lookahead_locc(loccs) : lookahead_probing();
-      if(unsat) {
+      int res =
+          terminating_asked() ? lookahead_locc(loccs) : lookahead_probing();
+      if (unsat) {
         LOG("current cube is unsat; skipping");
         unsat = false;
         continue;
@@ -480,10 +484,12 @@ CubesWithStatus Internal::generate_cubes(int depth, int min_depth) {
       break;
   }
 
-  assert(std::for_each(std::begin(cubes), std::end(cubes), [](std::vector<int> cube){return non_tautological_cube (cube);}));
+  assert(std::for_each(
+      std::begin(cubes), std::end(cubes),
+      [](std::vector<int> cube) { return non_tautological_cube(cube); }));
   reset_assumptions();
 
-  for(auto lit : current_assumptions)
+  for (auto lit : current_assumptions)
     assume(lit);
 
   STOP(lookahead);

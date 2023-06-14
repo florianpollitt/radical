@@ -53,7 +53,7 @@ namespace CaDiCaL {
 // 'value' in our 'code').  In order to avoid computing 'pow' every time, we
 // use 'exp' which is multiplied in every update with 'beta'.
 
-void EMA::update (Internal * internal, double y, const char * name) {
+void EMA::update(Internal *internal, double y, const char *name) {
 #ifdef LOGGING
   updated++;
   const double old_value = value;
@@ -62,18 +62,18 @@ void EMA::update (Internal * internal, double y, const char * name) {
   const double delta = y - old_biased;
   const double scaled_delta = alpha * delta;
   const double new_biased = old_biased + scaled_delta;
-  LOG ("update %" PRIu64 " of biased %s EMA %g with %g (delta %g) "
-       "yields %g (scaled delta %g)",
-       updated, name, old_biased, y, delta, new_biased, scaled_delta);
+  LOG("update %" PRIu64 " of biased %s EMA %g with %g (delta %g) "
+      "yields %g (scaled delta %g)",
+      updated, name, old_biased, y, delta, new_biased, scaled_delta);
   biased = new_biased;
   const double old_exp = exp;
   double new_exp, div, new_value;
   if (old_exp) {
     new_exp = old_exp * beta;
-    assert (new_exp < 1);
+    assert(new_exp < 1);
     exp = new_exp;
     div = 1 - new_exp;
-    assert (div > 0);
+    assert(div > 0);
     new_value = new_biased / div;
   } else {
     new_value = new_biased;
@@ -83,13 +83,13 @@ void EMA::update (Internal * internal, double y, const char * name) {
 #endif
   }
   value = new_value;
-  LOG ("update %" PRIu64 " of corrected %s EMA %g with %g (delta %g) "
-       "yields %g (exponent %g, divisor %g)" ,
-       updated, name, old_value, y, delta, new_value, new_exp, div);
+  LOG("update %" PRIu64 " of corrected %s EMA %g with %g (delta %g) "
+      "yields %g (exponent %g, divisor %g)",
+      updated, name, old_value, y, delta, new_value, new_exp, div);
 #ifndef LOGGING
-  (void) internal;
-  (void) name;
+  (void)internal;
+  (void)name;
 #endif
 }
 
-}
+} // namespace CaDiCaL

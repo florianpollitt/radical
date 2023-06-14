@@ -25,19 +25,20 @@ class Reluctant {
   bool trigger, limited;
 
 public:
+  Reluctant() : period(0), trigger(false) {}
 
-  Reluctant () : period (0), trigger (false) { }
-
-  void enable (int p, int64_t l) {
-    assert (p > 0);
+  void enable(int p, int64_t l) {
+    assert(p > 0);
     u = v = 1;
     period = countdown = p;
     trigger = false;
-    if (l <= 0) limited = false;
-    else limited = true, limit = l;
+    if (l <= 0)
+      limited = false;
+    else
+      limited = true, limit = l;
   };
 
-  void disable () { period = 0, trigger = false; }
+  void disable() { period = 0, trigger = false; }
 
   // Increments the count until the 'period' is hit.  Then it performs the
   // actual increment of reluctant doubling.  This gives the common 'Luby'
@@ -45,26 +46,34 @@ public:
   // reached (countdown goes to zero) we remember this event and then
   // disable updating the reluctant sequence until the signal is delivered.
 
-  void tick () {
+  void tick() {
 
-    if (!period) return;        // disabled
-    if (trigger) return;        // already triggered
-    if (--countdown) return;    // not there yet
+    if (!period)
+      return; // disabled
+    if (trigger)
+      return; // already triggered
+    if (--countdown)
+      return; // not there yet
 
-    if ((u & -u) == v) u = u + 1, v = 1; else v = 2*v; // (DK)
+    if ((u & -u) == v)
+      u = u + 1, v = 1;
+    else
+      v = 2 * v; // (DK)
 
-    if (limited && v >= limit) u = v = 1;
+    if (limited && v >= limit)
+      u = v = 1;
     countdown = v * period;
     trigger = true;
   }
 
-  operator bool () {
-    if (!trigger) return false;
+  operator bool() {
+    if (!trigger)
+      return false;
     trigger = false;
     return true;
   }
 };
 
-}
+} // namespace CaDiCaL
 
 #endif
