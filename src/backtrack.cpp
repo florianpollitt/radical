@@ -170,6 +170,7 @@ void Internal::multi_backtrack (int new_level) {
     unassigned, percent (unassigned, unassigned + elevated));
   LOG ("elevated %d literals %.0f%%",
     elevated, percent (elevated, unassigned + elevated));
+  stats.elevated += elevated;
 
   clear_trails (new_level);
   multitrail.resize (new_level);
