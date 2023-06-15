@@ -537,50 +537,58 @@ inline int Internal::determine_actual_backtrack_level (int jump) {
     LOG ("back-jumping over %d > %d levels prohibited"
       "thus backtracking chronologically to level %d",
       level - jump, opts.chronolevelim, res);
-  } else if (opts.chronoreusetrail && !opts.multitrail) {
+  } else if (opts.chronoreusetrail) { // && !opts.multitrail) {
     // I think this makes no sense for multitrail...
+    // obviously this is where chronological backtracking ist triggered most...
 
-    int best_idx = 0, best_pos = 0;
+    int best_idx = 0, best_pos = 0, best_lvl = 0;
 
     // TODO: multitrail -> iterate over level and then trail...
     if (use_scores ()) {
-      for (size_t i = control[jump + 1].trail; i < trail.size (); i++) {
-        const int idx = abs (trail[i]);
-        if (best_idx && !score_smaller (this) (best_idx, idx)) continue;
-        best_idx = idx;
-        best_pos = i;
-      }
-      /*
-      for (int l = jump + 1; l < level; l++) {
-        const vector<int> t = *next_trail (l);
-        for (size_t i = control[l].trail; i < t.size (); i++) {
-          const auto idx = abs (t[i]);
+      if (!opts.multitrail) {
+        for (size_t i = control[jump + 1].trail; i < trail.size (); i++) {
+          const int idx = abs (trail[i]);
           if (best_idx && !score_smaller (this) (best_idx, idx)) continue;
           best_idx = idx;
           best_pos = i;
         }
-        if (!opts.multitrail) break;
       }
-      */
+      else {
+        for (int l = jump + 1; l <= level; l++) {
+          const vector<int> t = *next_trail (l);
+          for (size_t i = 0; i < t.size (); i++) {
+            const auto idx = abs (t[i]);
+            if (var (idx).level < l) continue;
+            if (best_idx && !score_smaller (this) (best_idx, idx)) continue;
+            best_idx = idx;
+            best_pos = i;
+            best_lvl = l-1;
+          }
+        }
+      }
       LOG ("best variable score %g", score (best_idx));
     } else {
-      for (size_t i = control[jump + 1].trail; i < trail.size (); i++) {
-        const int idx = abs (trail[i]);
-        if (best_idx && bumped (best_idx) >= bumped (idx)) continue;
-        best_idx = idx;
-        best_pos = i;
-      }
-      /*
-      for (int l = jump + 1; l < level; l++) {
-        const vector<int> t = *next_trail (l);
-        for (size_t i = control[l].trail; i < t.size (); i++) {
-          const auto idx = abs (t[i]);
+      if (!opts.multitrail) {
+        for (size_t i = control[jump + 1].trail; i < trail.size (); i++) {
+          const int idx = abs (trail[i]);
           if (best_idx && bumped (best_idx) >= bumped (idx)) continue;
           best_idx = idx;
           best_pos = i;
         }
-        if (!opts.multitrail) break;
-      */
+      }
+      else {
+        for (int l = jump + 1; l <= level; l++) {
+          const vector<int> t = *next_trail (l);
+          for (size_t i = 0; i < t.size (); i++) {
+            const auto idx = abs (t[i]);
+            if (var (idx).level < l) continue;
+            if (best_idx && bumped (best_idx) >= bumped (idx)) continue;
+            best_idx = idx;
+            best_pos = i;
+            best_lvl = l-1;
+          }
+        }
+      }
       LOG ("best variable bumped %" PRId64 "", bumped (best_idx));
     }
     assert (best_idx);
@@ -594,8 +602,13 @@ inline int Internal::determine_actual_backtrack_level (int jump) {
     // of the control frame one higher than at the result level.
     //
     res = jump;
-    while (res < level-1 && control[res+1].trail <= best_pos)
-      res++;
+    if (!opts.multitrail)
+      while (res < level-1 && control[res+1].trail <= best_pos)
+        res++;
+    else {
+      assert (0 < best_lvl && best_lvl < level);
+      res = best_lvl;
+    }
 
     if (res == jump)
       LOG ("default non-chronological back-jumping to level %d", res);

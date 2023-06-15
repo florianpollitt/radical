@@ -717,7 +717,7 @@ bool Internal::propagate () {
       conflict = propagation_conflict (-1, 0);
     
     if (!searching_lucky_phases) 
-      stats.propagations.search += propagated - before;
+      stats.propagations.search += current - before;
     if (conflict) break;
   }
   if (!conflict)
