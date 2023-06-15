@@ -730,6 +730,7 @@ struct Internal {
   bool consider_to_vivify_clause (Clause * candidate, bool redundant_mode);
   void vivify_analyze_redundant (Vivifier &, Clause * start, bool &);
   void vivify_build_lrat (int, Clause *);
+  void vivify_chain_for_units (int lit, Clause * reason);
   bool vivify_all_decisions (Clause * candidate, int subsume);
   void vivify_post_process_analysis (Clause * candidate, int subsume);
   void vivify_strengthen (Clause * candidate);

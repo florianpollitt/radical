@@ -260,12 +260,16 @@ namespace CaDiCaL {
     assert(rend_block < clause.rend());
     assert(rbegin_lits < rend_block);
 
+#ifdef LOGGING
+
     LOG("trying to shrink %u literals on level %u", open, blevel);
+
     vector<int> * t = next_trail (blevel);
     
     LOG("maximum trail position %zd on level %u", t->size(), blevel);
     if (opts.shrinkreap)
       LOG ("shrinking up to %u", max_trail);
+#endif
 
     const bool resolve_large_clauses = (opts.shrink > 2);
     bool failed = (opts.shrink == 0);

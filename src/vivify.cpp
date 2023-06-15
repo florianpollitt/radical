@@ -99,7 +99,7 @@ bool Internal::vivify_propagate () {
         if (b > 0) continue;
         if (b < 0) conflict = w.clause;                 // but continue
         else {
-          build_chain_for_units (w.blit, w.clause);
+          vivify_chain_for_units (w.blit, w.clause);
           vivify_assign (w.blit, w.clause);
           lrat_chain.clear ();
         }
@@ -148,7 +148,7 @@ bool Internal::vivify_propagate () {
             j--;
           } else if (!u) {
             assert (v < 0);
-            build_chain_for_units (other, w.clause);
+            vivify_chain_for_units (other, w.clause);
             vivify_assign (other, w.clause);
             lrat_chain.clear ();
           } else {
@@ -961,6 +961,25 @@ void Internal::vivify_build_lrat (int lit, Clause * reason) {
     if (v.reason) {                           // recursive justification
       vivify_build_lrat (other, v.reason);
     }
+  }
+  lrat_chain.push_back (reason->id);
+}
+
+// calculate lrat_chain
+//
+inline void Internal::vivify_chain_for_units (int lit, Clause * reason) {
+  if (!opts.lrat || opts.lratexternal) return;
+  // LOG ("building chain for units");        bad line for debugging equivalence
+  // if (opts.chrono && assignment_level (lit, reason)) return;
+  if (level) return;   // not decision level 0
+  assert (lrat_chain.empty ());
+  for (auto & reason_lit : *reason) {
+    if (lit == reason_lit) continue;
+    assert (val (reason_lit));
+    if (!val (reason_lit)) continue;
+    const unsigned uidx = vlit (val (reason_lit) * reason_lit);
+    uint64_t id = unit_clauses[uidx];
+    lrat_chain.push_back (id);
   }
   lrat_chain.push_back (reason->id);
 }

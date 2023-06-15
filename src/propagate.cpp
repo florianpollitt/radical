@@ -46,7 +46,7 @@ inline int Internal::assignment_level (int lit, Clause * reason) {
 
 // calculate lrat_chain
 //
-inline void Internal::build_chain_for_units (int lit, Clause * reason) {
+void Internal::build_chain_for_units (int lit, Clause * reason) {
   if (!opts.lrat || opts.lratexternal) return;
   // LOG ("building chain for units");        bad line for debugging equivalence
   if (opts.chrono && assignment_level (lit, reason)) return;
@@ -222,7 +222,7 @@ bool Internal::propagate_conflicts () {
     literal_iterator k = lits;
 
     int first = 0, second = 0;
-    literal_iterator fpos, spos;
+    literal_iterator fpos = 0, spos = 0;
     
     // find first, second
     for (; k < end; k++) {
