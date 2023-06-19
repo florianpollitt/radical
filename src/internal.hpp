@@ -958,6 +958,7 @@ struct Internal {
     int elevating_level (int lit, Clause * reason);
     void set_propagated (int l, int prop);
     bool propagate_conflicts ();
+    bool propagate_multitrail ();
     
     // Hyper ternary resolution.
     //

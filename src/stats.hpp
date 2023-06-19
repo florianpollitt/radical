@@ -24,6 +24,8 @@ struct Stats {
     int64_t transred;   // propagated during transitive reduction
     int64_t vivify;     // propagated during vivification
     int64_t walk;       // propagated during local search
+    int64_t clean;      // propagated on highest level (with multitrail)
+    int64_t dirty;      // propagated on highest level (with multitrail)
   } propagations;
 
   int64_t condassinit;  // initial assigned literals
