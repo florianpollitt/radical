@@ -215,6 +215,7 @@ struct Internal {
   vector<int> shrinkable;       // removable or poison in 'shrink'
   Reap reap;                    // radix heap for shrink
 
+  bool multitrail_dirty;
   vector<size_t> multitrail;    // "propagated" for each level
   vector<vector<int>*> trails;  // all assignments on all levels
   size_t num_assigned;          // check for satisfied
@@ -959,6 +960,7 @@ struct Internal {
     void set_propagated (int l, int prop);
     bool propagate_conflicts ();
     bool propagate_multitrail ();
+    bool propagate_clean ();
     
     // Hyper ternary resolution.
     //

@@ -95,6 +95,7 @@ bool Internal::satisfied () {
 
 int Internal::decide () {
   assert (!satisfied ());
+  assert (!multitrail_dirty);
   START (decide);
   int res = 0;
   if ((size_t) level < assumptions.size ()) {

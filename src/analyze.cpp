@@ -562,7 +562,7 @@ inline int Internal::determine_actual_backtrack_level (int jump) {
             if (best_idx && !score_smaller (this) (best_idx, idx)) continue;
             best_idx = idx;
             best_pos = i;
-            best_lvl = l-1;
+            best_lvl = l;
           }
         }
       }
@@ -585,7 +585,7 @@ inline int Internal::determine_actual_backtrack_level (int jump) {
             if (best_idx && bumped (best_idx) >= bumped (idx)) continue;
             best_idx = idx;
             best_pos = i;
-            best_lvl = l-1;
+            best_lvl = l;
           }
         }
       }
@@ -606,6 +606,7 @@ inline int Internal::determine_actual_backtrack_level (int jump) {
       while (res < level-1 && control[res+1].trail <= best_pos)
         res++;
     else {
+      if (best_lvl == level) best_lvl = level-1;
       assert (0 < best_lvl && best_lvl < level);
       res = best_lvl;
     }
@@ -621,6 +622,9 @@ inline int Internal::determine_actual_backtrack_level (int jump) {
     res = jump;
     LOG ("non-chronological back-jumping to level %d", res);
   }
+  
+  if (opts.multitrail && res != jump)
+    multitrail_dirty = true;
 
   return res;
 }
