@@ -16,4 +16,7 @@ grep -v 'dlim' | \
 grep -v 'extend' | \
 grep -v 'learn' | \
 grep -v 'witness' | \
-grep -v 'lrat'
+grep -v 'lrat' | \
+grep -v 'multitrail' | \
+grep -v 'chrono'
+
