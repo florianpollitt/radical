@@ -36,6 +36,29 @@ int Internal::trail_size (int l) {
   return (int) trails[l - 1]->size ();
 }
 
+// returns the sizes of trails up to (and including) level l
+// TODO: instead of iterating over trails here and disregarding
+// elevated literals, instead clean trails during propagation...
+// then commented code works instead
+//
+int Internal::trails_sizes (int l) {
+  assert (opts.multitrail);
+  int res = trail.size ();
+  // TODO: switch code here
+  for (int i = 0; i < l; i++) {
+    for (auto & lit : *(trails[i])) {
+      if (lit && var (lit).level == i+1)
+        res ++;
+    }
+  }
+  /*
+  for (int i = 0; i < l; i++) {
+    res += trails[i]->size ();
+  }
+  */
+  return res;
+}
+
 // pushes lit on trail for level l
 //
 void Internal::trail_push (int lit, int l) {

@@ -996,8 +996,8 @@ bool Internal::propagate_multitrail () {
     //
 
     if (!conflict) {
-      no_conflict_level = level;
-      no_conflict_until = next_propagated (level);
+      // TODO no_conflict_until = num_assigned below this level
+      no_conflict_until = trails_sizes (level);
     } else {
 
       if (stable) stats.stabconflicts++;
@@ -1005,11 +1005,10 @@ bool Internal::propagate_multitrail () {
 
       LOG (conflict, "conflict");
 
-      // The trail before the current decision level was conflict free.
+      // The trail before the current propagated level was conflict free.
       //
-      // TODO: opts.multitrail
-      no_conflict_until = control[proplevel].trail;
-      no_conflict_level = proplevel - 1;
+      if (proplevel)
+        no_conflict_until = trails_sizes (proplevel-1);
     }
   }
 
@@ -1039,8 +1038,8 @@ bool Internal::propagate_clean() {
   // delay until propagation ran to completion.
   //
 
-  int64_t before = next_propagated (level);
   LOG ("PROPAGATION clean on level %d", level);
+  int64_t before = next_propagated (level);
   size_t current = before;
   vector<int> * t = next_trail (level);
   while (!conflict && current != t->size()) {
@@ -1198,39 +1197,7 @@ bool Internal::propagate_clean() {
             // commented code cannot happen
             assert (var (lit).level == level);
             assert (var (other).level == level);
-            /*
-            
-            if (opts.chrono > 1) {
 
-              const int other_level = var(other).level;
-
-              if (other_level > var(lit).level) {
-
-                // The assignment level of the new unit 'other' is larger
-                // than the assignment level of 'lit'.  Thus we should find
-                // another literal in the clause at that higher assignment
-                // level and watch that instead of 'lit'.
-
-                assert(size > 2);
-
-                int pos, s = 0;
-
-                for (pos = 2; pos < size; pos++)
-                  if (var(s = lits[pos]).level == other_level)
-                    break;
-
-                assert(s);
-                assert(pos < size);
-
-                LOG(w.clause, "unwatch %d in", lit);
-                lits[pos] = lit;
-                lits[0] = other;
-                lits[1] = s;
-                watch_literal(s, other, w.clause);
-
-                j--; // Drop this watch from the watch list of 'lit'.
-              }
-              */
           } else {
 
             assert(u < 0);
@@ -1269,8 +1236,7 @@ bool Internal::propagate_clean() {
     stats.propagations.clean += current - before;
 
     if (!conflict) {
-      no_conflict_level = level;      // this is not really needed?
-      no_conflict_until = current;
+      no_conflict_until = trails_sizes (level);
     }
     else {
 
@@ -1282,8 +1248,8 @@ bool Internal::propagate_clean() {
 
       // The trail before the current decision level was conflict free.
       //
-      no_conflict_until = control[level].trail;
-      no_conflict_level = level - 1;
+      if (level)
+        no_conflict_until = trails_sizes (level-1);
     }
   }
 
