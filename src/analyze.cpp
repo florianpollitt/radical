@@ -683,8 +683,8 @@ void Internal::analyze () {
 
   // First update moving averages of trail height at conflict.
   //
-  UPDATE_AVERAGE (averages.current.trail.fast, trail.size ());
-  UPDATE_AVERAGE (averages.current.trail.slow, trail.size ());
+  UPDATE_AVERAGE (averages.current.trail.fast, num_assigned);
+  UPDATE_AVERAGE (averages.current.trail.slow, num_assigned);
 
   /*----------------------------------------------------------------------*/
 
