@@ -613,6 +613,7 @@ bool Internal::propagate_multitrail () {
   if (level) require_mode (SEARCH);
   assert (!unsat);
   assert (!conflict);
+  assert (opts.chrono);
   START (propagate);
 
   // first we have to fix watches in the previous conflicts (and possibly
@@ -997,7 +998,7 @@ bool Internal::propagate_multitrail () {
 
     if (!conflict) {
       // TODO no_conflict_until = num_assigned below this level
-      no_conflict_until = trails_sizes (level);
+      no_conflict_until = num_assigned;
     } else {
 
       if (stable) stats.stabconflicts++;
@@ -1236,7 +1237,7 @@ bool Internal::propagate_clean() {
     stats.propagations.clean += current - before;
 
     if (!conflict) {
-      no_conflict_until = trails_sizes (level);
+      no_conflict_until = num_assigned;
     }
     else {
 
@@ -1247,7 +1248,7 @@ bool Internal::propagate_clean() {
       LOG(conflict, "conflict");
 
       // The trail before the current decision level was conflict free.
-      //
+      // num_assigned; //
       if (level)
         no_conflict_until = trails_sizes (level-1);
     }

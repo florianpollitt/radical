@@ -45,17 +45,18 @@ int Internal::trails_sizes (int l) {
   assert (opts.multitrail);
   int res = trail.size ();
   // TODO: switch code here
+  /*
   for (int i = 0; i < l; i++) {
     for (auto & lit : *(trails[i])) {
       if (lit && var (lit).level == i+1)
         res ++;
     }
   }
-  /*
+  */
+  // not precise...
   for (int i = 0; i < l; i++) {
     res += trails[i]->size ();
   }
-  */
   return res;
 }
 
