@@ -561,9 +561,9 @@ inline void Internal::elim_add_resolvents (Eliminator &eliminator,
 
   const Occs &ps = occs (pivot);
   const Occs &ns = occs (-pivot);
-
+#ifdef LOGGING
   int64_t resolvents = 0;
-
+#endif
   for (auto &c : ps) {
     if (unsat)
       break;
@@ -579,15 +579,14 @@ inline void Internal::elim_add_resolvents (Eliminator &eliminator,
       if (!resolve_clauses (eliminator, c, pivot, d, false))
         continue;
       assert (!opts.lrat || opts.lratexternal || !lrat_chain.empty ());
-      Clause *r =
-          new_resolved_irredundant_clause (); // TODO: clear lrat_chain
-                                              // afterwards (or better
-      elim_update_added_clause (
-          eliminator, r); // clear it in new_resolved_irredundant_clause.
+      Clause *r = new_resolved_irredundant_clause ();
+      elim_update_added_clause (eliminator, r);
       eliminator.enqueue (r);
       lrat_chain.clear ();
       clause.clear ();
+#ifdef LOGGING
       resolvents++;
+#endif
     }
   }
 
@@ -608,9 +607,9 @@ void Internal::mark_eliminated_clauses_as_garbage (Eliminator &eliminator,
   const int64_t substitute = eliminator.gates.size ();
   if (substitute)
     LOG ("pushing %" PRId64 " gate clauses on extension stack", substitute);
-
+#ifndef NDEBUG
   int64_t pushed = 0;
-
+#endif
   Occs &ps = occs (pivot);
   for (const auto &c : ps) {
     if (c->garbage)
@@ -619,7 +618,9 @@ void Internal::mark_eliminated_clauses_as_garbage (Eliminator &eliminator,
     assert (!c->redundant);
     if (!substitute || c->gate) {
       external->push_clause_on_extension_stack (c, pivot);
+#ifndef NDEBUG
       pushed++;
+#endif
     }
     elim_update_removed_clause (eliminator, c, pivot);
   }
@@ -635,7 +636,9 @@ void Internal::mark_eliminated_clauses_as_garbage (Eliminator &eliminator,
     assert (!d->redundant);
     if (!substitute || d->gate) {
       external->push_clause_on_extension_stack (d, -pivot);
+#ifndef NDEBUG
       pushed++;
+#endif
     }
     elim_update_removed_clause (eliminator, d, -pivot);
   }
@@ -849,10 +852,10 @@ int Internal::elim_round (bool &completed) {
   const int old_eliminated = stats.all.eliminated;
   const int old_fixed = stats.all.fixed;
 
-  // Limit on garbage bytes during variable elimination. If the limit is hit
-  // a garbage collection is performed.
+  // Limit on garbage literals during variable elimination. If the limit is
+  // hit a garbage collection is performed.
   //
-  const int64_t garbage_limit = (2 * stats.irrbytes / 3) + (1 << 20);
+  const int64_t garbage_limit = (2 * stats.irrlits / 3) + (1 << 20);
 
   // Main loops tries to eliminate variables according to the schedule. The
   // schedule is updated dynamically and variables are potentially
@@ -870,7 +873,7 @@ int Internal::elim_round (bool &completed) {
 #ifndef QUIET
     tried++;
 #endif
-    if (stats.garbage <= garbage_limit)
+    if (stats.garbage.literals <= garbage_limit)
       continue;
     mark_redundant_clauses_with_eliminated_variables_as_garbage ();
     garbage_collection ();
@@ -952,14 +955,18 @@ void Internal::increase_elimination_bound () {
 
   // Now reschedule all active variables for elimination again.
   //
+#ifdef LOGGING
   int count = 0;
+#endif
   for (auto idx : vars) {
     if (!active (idx))
       continue;
     if (flags (idx).elim)
       continue;
     mark_elim (idx);
+#ifdef LOGGING
     count++;
+#endif
   }
   LOG ("marked %d variables as elimination candidates", count);
 

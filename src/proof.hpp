@@ -54,6 +54,13 @@ public:
   //
   void add_original_clause (uint64_t, const vector<int> &);
 
+  // Add/delete original clauses to/from the proof using their original
+  //  external literals (from external->eclause)
+  // TODO: add ids...
+  //
+  void add_external_original_clause (const vector<int> &);
+  void delete_external_original_clause (const vector<int> &);
+
   // Add derived (such as learned) clauses to the proof.
   //
   void add_derived_empty_clause (uint64_t);

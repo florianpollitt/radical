@@ -100,7 +100,7 @@ static int xzsig[] = {0xFD, 0x37, 0x7A, 0x58, 0x5A, 0x00, 0x00, EOF};
 static int bz2sig[] = {0x42, 0x5A, 0x68, EOF};
 static int gzsig[] = {0x1F, 0x8B, EOF};
 static int sig7z[] = {0x37, 0x7A, 0xBC, 0xAF, 0x27, 0x1C, EOF};
-static int lzmasig[] = {0x5D, 0x00, 0x00, 0x80, 0x00, EOF};
+static int lzmasig[] = {0x5D, EOF};
 
 bool File::match (Internal *internal, const char *path, const int *sig) {
   assert (path);
@@ -144,7 +144,7 @@ char *File::find (const char *prg) {
     *q++ = 0;
     size_t pathlen = (q - p) + prglen;
     char *path = new char[pathlen + 1];
-    sprintf (path, "%s/%s", p, prg);
+    snprintf (path, pathlen + 1, "%s/%s", p, prg);
     assert (strlen (path) == pathlen);
     if (exists (path))
       res = path;
@@ -195,8 +195,9 @@ FILE *File::open_pipe (Internal *internal, const char *fmt,
   if (!found)
     return 0;
   delete[] found;
-  char *cmd = new char[strlen (fmt) + strlen (path)];
-  sprintf (cmd, fmt, path);
+  size_t cmd_size = strlen (fmt) + strlen (path);
+  char *cmd = new char[cmd_size];
+  snprintf (cmd, cmd_size, fmt, path);
   FILE *res = popen (cmd, mode);
   delete[] cmd;
   return res;

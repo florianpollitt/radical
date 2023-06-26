@@ -159,7 +159,7 @@ inline void Internal::subsume_clause (Clause *subsuming, Clause *subsumed) {
   subsuming->redundant = false;
   stats.current.irredundant++;
   stats.added.irredundant++;
-  stats.irrbytes += subsuming->bytes ();
+  stats.irrlits += subsuming->size;
   assert (stats.current.redundant > 0);
   stats.current.redundant--;
   assert (stats.added.redundant > 0);

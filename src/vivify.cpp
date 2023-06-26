@@ -874,18 +874,21 @@ void Internal::vivify_clause (Vivifier &vivifier, Clause *c) {
     }
   }
 
-  // try to do the same idea as in instantiate here
-  // ie., if the last literal is not already negatively implied (and the
-  // clause is not subsumed) we set it to true and strengthen the clause if
-  // we get a conflict
+  // Now we go over the very last literal of the clause and attempt to
+  // instantiate it refer to instantiate.hpp for more. As clauses as sorted
+  // by number of occurrence, we attempt to remove literals with few
+  // occurrences
+
   if (opts.vivifyinst && !subsume) {
-    const int &lit = sorted.back ();
+    const int lit = sorted.back ();
     if (remove != lit) {
-      LOG ("instantiate vivify");
-      // is this ok?
+      LOG ("vivify instantiation");
       backtrack (level - 1);
+      assert (val (lit) == 0);
+      stats.vivifydecs++;
       vivify_assume (lit);
-      if (!vivify_propagate ()) {
+      bool ok = vivify_propagate ();
+      if (!ok) {
         LOG (c, "instantiate success with literal %d in", lit);
         stats.vivifyinst++;
         // strengthen clause
@@ -900,7 +903,7 @@ void Internal::vivify_clause (Vivifier &vivifier, Clause *c) {
         conflict = 0;
         assert (!conflict);
       } else {
-        LOG ("instantiate failed");
+        LOG ("instantiation failed");
       }
     }
   }
@@ -974,7 +977,6 @@ void Internal::vivify_clause (Vivifier &vivifier, Clause *c) {
         continue;
       }
       if (other == remove) {
-        stats.vivifyinst++;
         continue;
       }
       // Decision or unassigned.

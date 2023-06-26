@@ -119,8 +119,6 @@ const char *Parser::parse_dimacs_non_profiled (int &vars, int strict) {
     if (!*o)
       continue;
     PHASE ("parse-dimacs", "found option '%s'", o);
-    // TODO: this is always on?? ask biere.
-    // bad for fuzzing as is, should not overwrite manually set options
     if (*o)
       solver->set_long_option (o);
   }
@@ -276,8 +274,8 @@ const char *Parser::parse_dimacs_non_profiled (int &vars, int strict) {
 
 #ifndef QUIET
   start = end;
-#endif
   size_t num_cubes = 0;
+#endif
   if (ch == 'a') {
     assert (parse_inccnf_too);
     assert (found_inccnf_header);
@@ -307,7 +305,9 @@ const char *Parser::parse_dimacs_non_profiled (int &vars, int strict) {
       if (cubes)
         cubes->push_back (lit);
       if (!lit) {
+#ifndef QUIET
         num_cubes++;
+#endif
         for (;;) {
           ch = parse_char ();
           if (ch == ' ' || ch == '\n' || ch == '\t' || ch == '\r')
@@ -371,7 +371,9 @@ const char *Parser::parse_solution_non_profiled () {
     ch = parse_char ();
   if (ch != '\n')
     PER ("expected new-line after 's SATISFIABLE'");
+#ifndef QUIET
   int count = 0;
+#endif
   for (;;) {
     ch = parse_char ();
     if (ch != 'v')
@@ -396,7 +398,9 @@ const char *Parser::parse_solution_non_profiled () {
         PER ("variable %d occurs twice", abs (lit));
       LOG ("solution %d", lit);
       external->solution[abs (lit)] = sign (lit);
+#ifndef QUIET
       count++;
+#endif
       if (ch == '\r')
         ch = parse_char ();
     } while (ch != '\n');

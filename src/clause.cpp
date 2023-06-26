@@ -238,8 +238,12 @@ void Internal::delete_clause (Clause *c) {
   size_t bytes = c->bytes ();
   stats.collected += bytes;
   if (c->garbage) {
-    assert (stats.garbage >= (int64_t) bytes);
-    stats.garbage -= bytes;
+    assert (stats.garbage.bytes >= (int64_t) bytes);
+    stats.garbage.bytes -= bytes;
+    assert (stats.garbage.clauses > 0);
+    stats.garbage.clauses--;
+    assert (stats.garbage.literals >= c->size);
+    stats.garbage.literals -= c->size;
 
     // See the discussion in 'propagate' on avoiding to eagerly trace binary
     // clauses as deleted (produce 'd ...' lines) as soon they are marked
@@ -378,7 +382,7 @@ void Internal::add_new_original_clause (uint64_t id) {
   }
   if (skip) {
     if (proof)
-      proof->delete_clause (id, original);
+      proof->delete_external_original_clause (external->eclause);
   } else {
     uint64_t new_id = id;
     size_t size = clause.size ();
@@ -391,7 +395,7 @@ void Internal::add_new_original_clause (uint64_t id) {
           proof->add_derived_clause (new_id, clause, lrat_chain);
         } else
           proof->add_derived_clause (new_id, clause);
-        proof->delete_clause (id, original);
+      proof->delete_external_original_clause (external->eclause);
       }
     }
     lrat_chain.clear ();

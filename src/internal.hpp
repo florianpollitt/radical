@@ -105,7 +105,7 @@ struct External;
 struct Walker;
 
 struct CubesWithStatus {
-  int status;
+  int status = 0;
   std::vector<std::vector<int>> cubes;
 };
 
@@ -149,75 +149,81 @@ struct Internal {
 
   /*----------------------------------------------------------------------*/
 
-  int mode;                    // current internal state
-  bool unsat;                  // empty clause found or learned
-  bool iterating;              // report learned unit ('i' line)
-  bool localsearching;         // true during local search
-  bool lookingahead;           // true during look ahead
-  bool preprocessing;          // true during preprocessing
-  bool protected_reasons;      // referenced reasons are protected
-  bool force_saved_phase;      // force saved phase in decision
-  bool searching_lucky_phases; // during 'lucky_phases'
-  bool stable;                 // true during stabilization phase
-  bool reported;               // reported in this solving call
-  char rephased;               // last type of resetting phases
-  Reluctant reluctant;         // restart counter in stable mode
-  size_t vsize;                // actually allocated variable data size
-  int max_var;                 // internal maximum variable index
-  uint64_t clause_id;          // last used id for clauses
-  uint64_t original_id;        // ids for original clauses to produce lrat
-  uint64_t reserved_ids; // number of reserved ids for original clauses
-  uint64_t conflict_id;  // store conflict id for finalize (frat)
-  vector<uint64_t> unit_clauses; // keep track of unit_clauses (lrat/frat)
-  vector<uint64_t> lrat_chain;   // create lrat in solver: option lratdirect
-  vector<uint64_t> mini_chain;   // used to create lrat in minimize
-  vector<uint64_t> minimize_chain; // used to create lrat in minimize
-  vector<uint64_t> unit_chain;     // used to avoid duplicate units
-  vector<Clause *> inst_chain;     // for lrat in instantiate
+  int mode;                       // current internal state
+  bool unsat;                     // empty clause found or learned
+  bool iterating;                 // report learned unit ('i' line)
+  bool localsearching;            // true during local search
+  bool lookingahead;              // true during look ahead
+  bool preprocessing;             // true during preprocessing
+  bool protected_reasons;         // referenced reasons are protected
+  bool force_saved_phase;         // force saved phase in decision
+  bool searching_lucky_phases;    // during 'lucky_phases'
+  bool stable;                    // true during stabilization phase
+  bool reported;                  // reported in this solving call
+  bool external_prop;             // true if an external propagator is connected
+  bool external_prop_is_lazy;     // true if the external propagator is lazy
+  char rephased;                  // last type of resetting phases
+  Reluctant reluctant;            // restart counter in stable mode
+  size_t vsize;                   // actually allocated variable data size
+  int max_var;                    // internal maximum variable index
+  uint64_t clause_id;             // last used id for clauses
+  uint64_t original_id;           // ids for original clauses to produce lrat
+  uint64_t reserved_ids;          // number of reserved ids for original clauses
+  uint64_t conflict_id;           // store conflict id for finalize (frat)
+  vector<uint64_t> unit_clauses;  // keep track of unit_clauses (lrat/frat)
+  vector<uint64_t> lrat_chain;    // create lrat in solver: option lratdirect
+  vector<uint64_t> mini_chain;    // used to create lrat in minimize
+  vector<uint64_t> minimize_chain;// used to create lrat in minimize
+  vector<uint64_t> unit_chain;    // used to avoid duplicate units
+  vector<Clause *> inst_chain;    // for lrat in instantiate
   vector<vector<vector<uint64_t>>>
-      probehbr_chains;        // only used if opts.probehbr=false
-  int level;                  // decision level ('control.size () - 1')
-  Phases phases;              // saved, target and best phases
-  signed char *vals;          // assignment [-max_var,max_var]
-  vector<signed char> marks;  // signed marks [1,max_var]
-  vector<unsigned> frozentab; // frozen counters [1,max_var]
-  vector<int> i2e;            // maps internal 'idx' to external 'lit'
-  Queue queue;                // variable move to front decision queue
-  Links links;                // table of links for decision queue
-  double score_inc;           // current score increment
-  ScoreSchedule scores;       // score based decision priority queue
-  vector<double> stab;        // table of variable scores [1,max_var]
-  vector<Var> vtab;           // variable table [1,max_var]
-  vector<int> parents;        // parent literals during probing
-  vector<Flags> ftab;         // variable and literal flags
-  vector<int64_t> btab;       // enqueue time stamps for queue
-  vector<int64_t> gtab;       // time stamp table to recompute glue
-  vector<Occs> otab;          // table of occurrences for all literals
-  vector<int> ptab;           // table for caching probing attempts
-  vector<int64_t> ntab;       // number of one-sided occurrences table
-  vector<Bins> big;           // binary implication graph
-  vector<Watches> wtab;       // table of watches for all literals
-  Clause *conflict;           // set in 'propagation', reset in 'analyze'
-  Clause *ignore;             // ignored during 'vivify_propagate'
-  Clause *probe_reason;       // set during probing
-  size_t propagated;          // next trail position to propagate
-  size_t propagated2;         // next binary trail position to propagate
-  size_t best_assigned;       // best maximum assigned ever
-  size_t target_assigned;     // maximum assigned without conflict
-  size_t no_conflict_until;   // largest trail prefix without conflict
-  vector<int> trail;          // currently assigned literals
-  vector<int> clause;         // simplified in parsing & learning
-  vector<int> assumptions;    // assumed literals
-  vector<int> constraint;     // literals of the constraint
-  bool unsat_constraint;      // constraint used for unsatisfiability?
-  bool marked_failed;         // are the failed assumptions marked?
-  vector<int> original;       // original added literals
-  vector<int> levels;         // decision levels in learned clause
-  vector<int> analyzed;       // analyzed literals in 'analyze'
-  vector<int> decomposed;     // literals skipped in 'decompose'
-  vector<int> minimized;      // removable or poison in 'minimize'
-  vector<int> shrinkable;     // removable or poison in 'shrink'
-  Reap reap;                  // radix heap for shrink
+      probehbr_chains;          // only used if opts.probehbr=false
+  int level;                    // decision level ('control.size () - 1')
+  Phases phases;                // saved, target and best phases
+  signed char *vals;            // assignment [-max_var,max_var]
+  vector<signed char> marks;    // signed marks [1,max_var]
+  vector<unsigned> frozentab;   // frozen counters [1,max_var]
+  vector<int> i2e;              // maps internal 'idx' to external 'lit'
+  vector<unsigned> relevanttab; // Reference counts for observed variables.
+  Queue queue;                  // variable move to front decision queue
+  Links links;                  // table of links for decision queue
+  double score_inc;             // current score increment
+  ScoreSchedule scores;         // score based decision priority queue
+  vector<double> stab;          // table of variable scores [1,max_var]
+  vector<Var> vtab;             // variable table [1,max_var]
+  vector<int> parents;          // parent literals during probing
+  vector<Flags> ftab;           // variable and literal flags
+  vector<int64_t> btab;         // enqueue time stamps for queue
+  vector<int64_t> gtab;         // time stamp table to recompute glue
+  vector<Occs> otab;            // table of occurrences for all literals
+  vector<int> ptab;             // table for caching probing attempts
+  vector<int64_t> ntab;         // number of one-sided occurrences table
+  vector<Bins> big;             // binary implication graph
+  vector<Watches> wtab;         // table of watches for all literals
+  Clause *conflict;             // set in 'propagation', reset in 'analyze'
+  Clause *ignore;               // ignored during 'vivify_propagate'
+  Clause *external_reason;      // used as reason at external propagations
+  size_t notified;              // next trail position to notify external prop
+  Clause *probe_reason;         // set during probing
+  size_t propagated;        // next trail position to propagate
+  size_t propagated2;       // next binary trail position to propagate
+  size_t propergated;       // propagated without blocking literals
+  size_t best_assigned;     // best maximum assigned ever
+  size_t target_assigned;   // maximum assigned without conflict
+  size_t no_conflict_until; // largest trail prefix without conflict
+  vector<int> trail;        // currently assigned literals
+  vector<int> clause;       // simplified in parsing & learning
+  vector<int> assumptions;  // assumed literals
+  vector<int> constraint;   // literals of the constraint
+  bool unsat_constraint;    // constraint used for unsatisfiability?
+  bool marked_failed;       // are the failed assumptions marked?
+  vector<int> original;     // original added literals
+  vector<int> levels;       // decision levels in learned clause
+  vector<int> analyzed;     // analyzed literals in 'analyze'
+  vector<int> decomposed;   // literals skipped in 'decompose'
+  vector<int> minimized;    // removable or poison in 'minimize'
+  vector<int> shrinkable;   // removable or poison in 'shrink'
+  Reap reap;                // radix heap for shrink
 
   vector<int> probes;       // remaining scheduled probes
   vector<Level> control;    // 'level + 1 == control.size ()'
@@ -567,9 +573,12 @@ struct Internal {
   void build_chain_for_empty ();
   void search_assign (int lit, Clause *);
   void search_assign_driving (int lit, Clause *reason);
+  void search_assign_external (int lit);
   void search_assume_decision (int decision);
   void assign_unit (int lit);
   bool propagate ();
+
+  void propergate (); // Repropagate without blocking literals.
 
   // Undo and restart in 'backtrack.cpp'.
   //
@@ -597,13 +606,39 @@ struct Internal {
   bool bump_also_reason_literal (int lit);
   void bump_also_reason_literals (int lit, int limit);
   void bump_also_all_reason_literals ();
-  void analyze_literal (int lit, int &open);
-  void analyze_reason (int lit, Clause *, int &open);
+  void analyze_literal (int lit, int &open, int &resolvent_size,
+                        int &antecedent_size);
+  void analyze_reason (int lit, Clause *, int &open, int &resolvent_size,
+                       int &antecedent_size);
   Clause *new_driving_clause (const int glue, int &jump);
   int find_conflict_level (int &forced);
   int determine_actual_backtrack_level (int jump);
+  void otfs_strengthen_clause (Clause *, int, int,
+                               const std::vector<int> &);
+  void otfs_subsume_clause (Clause *subsuming, Clause *subsumed);
+  Clause *on_the_fly_strengthen (Clause *conflict, int lit);
   void analyze ();
   void iterate (); // report learned unit clause
+
+  // Learning from external propagator in 'external_propagate.cpp'
+  //
+  bool external_propagate ();
+  bool external_check_solution ();
+  Clause *add_external_clause (bool as_redundant, int propagated_lit = 0);
+  Clause *learn_external_reason_clause (int lit, int falsified_elit = 0);
+  void explain_external_propagations ();
+  void explain_reason (int lit, Clause *, int &open);
+  void move_literal_to_watch (bool other_watch);
+  bool handle_external_clause (Clause *);
+  void notify_assignments ();
+  void notify_decision ();
+  void notify_backtrack (size_t new_level);
+  int ask_decision ();
+  void add_observed_var (int ilit);
+  void remove_observed_var (int ilit);
+  bool observed (int ilit) const;
+  bool is_decision (int ilit);
+  void check_watched_literal_invariants ();
 
   // Use last learned clause to subsume some more.
   //
@@ -837,6 +872,11 @@ struct Internal {
     const unsigned bit = bign (lit);
     return (f.block & bit) != 0;
   }
+  void unmark_block (int lit) {
+    Flags &f = flags (lit);
+    const unsigned bit = bign (lit);
+    f.block &= ~bit;
+  }
 
   // During scheduling literals for blocked clause elimination we skip those
   // literals which occur negated in a too large clause.
@@ -848,11 +888,6 @@ struct Internal {
       return;
     LOG ("marking %d to be skipped as blocking literal", lit);
     f.skip |= bit;
-  }
-  void unmark_block (int lit) {
-    Flags &f = flags (lit);
-    const unsigned bit = bign (lit);
-    f.block &= ~bit;
   }
   bool marked_skip (int lit) {
     const Flags &f = flags (lit);
@@ -1008,6 +1043,11 @@ struct Internal {
 
   void reset_limits (); // Reset after 'solve' call.
 
+  // Try flipping a literal while not falsifying a model.
+
+  bool flip (int lit);
+  bool flippable (int lit);
+
   // Assumption handling.
   //
   void assume_analyze_literal (int lit);
@@ -1061,6 +1101,7 @@ struct Internal {
   int next_decision_variable ();
   int decide_phase (int idx, bool target);
   int likely_phase (int idx);
+  bool better_decision (int lit, int other);
   int decide (); // 0=decision, 20=failed
 
   // Internal functions to enable explicit search limits.

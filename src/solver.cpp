@@ -156,21 +156,21 @@ static void log_api_call_returns (Internal *internal, const char *name,
 static void log_api_call_returns (Internal *internal, const char *name,
                                   int res) {
   char fmt[32];
-  sprintf (fmt, "returns '%d'", res);
+  snprintf (fmt, sizeof fmt, "returns '%d'", res);
   log_api_call (internal, name, fmt);
 }
 
 static void log_api_call_returns (Internal *internal, const char *name,
                                   int64_t res) {
   char fmt[32];
-  sprintf (fmt, "returns '%" PRId64 "'", res);
+  snprintf (fmt, sizeof fmt, "returns '%" PRId64 "'", res);
   log_api_call (internal, name, fmt);
 }
 
 static void log_api_call_returns (Internal *internal, const char *name,
                                   int lit, int res) {
   char fmt[32];
-  sprintf (fmt, "returns '%d'", res);
+  snprintf (fmt, sizeof fmt, "returns '%d'", res);
   log_api_call (internal, name, lit, fmt);
 }
 
@@ -248,8 +248,7 @@ static void log_api_call_returns (Internal *internal, const char *name,
 
 #define TRACE(...) \
   do { \
-    if ((this == 0)) \
-      break; \
+    /*if ((this == 0)) break; */ /* gcc-12 produces warning */ \
     if ((internal == 0)) \
       break; \
     LOG_API_CALL_BEGIN (__VA_ARGS__); \
@@ -269,6 +268,13 @@ void Solver::trace_api_call (const char *s0, int i1) const {
   assert (trace_api_file);
   LOG ("TRACE %s %d", s0, i1);
   fprintf (trace_api_file, "%s %d\n", s0, i1);
+  fflush (trace_api_file);
+}
+
+void Solver::trace_api_call (const char *s0, const char *s1) const {
+  assert (trace_api_file);
+  LOG ("TRACE %s %s", s0, s1);
+  fprintf (trace_api_file, "%s %s\n", s0, s1);
   fflush (trace_api_file);
 }
 
@@ -505,6 +511,7 @@ bool Solver::is_valid_configuration (const char *name) {
 }
 
 bool Solver::configure (const char *name) {
+  TRACE ("configure", name);
   LOG_API_CALL_BEGIN ("configure", name);
   REQUIRE_VALID_STATE ();
   REQUIRE (state () == CONFIGURING,
@@ -659,6 +666,30 @@ int Solver::val (int lit) {
     external->extend ();
   int res = external->ival (lit);
   LOG_API_CALL_RETURNS ("val", lit, res);
+  assert (state () == SATISFIED);
+  assert (res == lit || res == -lit);
+  return res;
+}
+
+bool Solver::flip (int lit) {
+  TRACE ("flip", lit);
+  REQUIRE_VALID_STATE ();
+  REQUIRE_VALID_LIT (lit);
+  REQUIRE (state () == SATISFIED, "can only flip value in satisfied state");
+  bool res = external->flip (lit);
+  LOG_API_CALL_RETURNS ("flip", lit, res);
+  assert (state () == SATISFIED);
+  return res;
+}
+
+bool Solver::flippable (int lit) {
+  TRACE ("flippable", lit);
+  REQUIRE_VALID_STATE ();
+  REQUIRE_VALID_LIT (lit);
+  REQUIRE (state () == SATISFIED, "can only flip value in satisfied state");
+  bool res = external->flippable (lit);
+  LOG_API_CALL_RETURNS ("flippable", lit, res);
+  assert (state () == SATISFIED);
   return res;
 }
 
@@ -670,6 +701,7 @@ bool Solver::failed (int lit) {
            "can only get failed assumptions in unsatisfied state");
   bool res = external->failed (lit);
   LOG_API_CALL_RETURNS ("failed", lit, res);
+  assert (state () == UNSATISFIED);
   return res;
 }
 
@@ -680,6 +712,7 @@ bool Solver::constraint_failed () {
            "can only determine if constraint failed in unsatisfied state");
   bool res = external->failed_constraint ();
   LOG_API_CALL_RETURNS ("constraint_failed", res);
+  assert (state () == UNSATISFIED);
   return res;
 }
 
@@ -694,7 +727,7 @@ int Solver::fixed (int lit) const {
 
 void Solver::phase (int lit) {
   TRACE ("phase", lit);
-  REQUIRE_VALID_STATE ();
+  REQUIRE_VALID_OR_SOLVING_STATE ();
   REQUIRE_VALID_LIT (lit);
   external->phase (lit);
   LOG_API_CALL_END ("phase", lit);
@@ -702,7 +735,7 @@ void Solver::phase (int lit) {
 
 void Solver::unphase (int lit) {
   TRACE ("unphase", lit);
-  REQUIRE_VALID_STATE ();
+  REQUIRE_VALID_OR_SOLVING_STATE ();
   REQUIRE_VALID_LIT (lit);
   external->unphase (lit);
   LOG_API_CALL_END ("unphase", lit);
@@ -774,6 +807,72 @@ void Solver::disconnect_learner () {
 }
 
 /*===== IPASIR END =======================================================*/
+
+/*===== IPASIR-UP BEGIN ==================================================*/
+
+void Solver::connect_external_propagator (ExternalPropagator *propagator) {
+  LOG_API_CALL_BEGIN ("connect_external_propagator");
+  REQUIRE_VALID_STATE ();
+  REQUIRE (propagator, "can not connect zero propagator");
+
+#ifdef LOGGING
+  if (external->propagator)
+    LOG ("connecting new external propagator (disconnecting previous one)");
+  else
+    LOG ("connecting new external propagator (no previous one)");
+#endif
+  if (external->propagator)
+    disconnect_external_propagator ();
+
+  external->propagator = propagator;
+  internal->external_prop = true;
+  internal->external_prop_is_lazy = propagator->is_lazy;
+  LOG_API_CALL_END ("connect_external_propagator");
+}
+
+void Solver::disconnect_external_propagator () {
+  LOG_API_CALL_BEGIN ("disconnect_external_propagator");
+  REQUIRE_VALID_STATE ();
+
+#ifdef LOGGING
+  if (external->propagator)
+    LOG ("disconnecting previous external propagator");
+  else
+    LOG ("ignoring to disconnect external propagator (no previous one)");
+#endif
+  if (external->propagator)
+    external->reset_observed_vars ();
+
+  external->propagator = 0;
+  internal->external_prop = false;
+  internal->external_prop_is_lazy = true;
+  LOG_API_CALL_END ("disconnect_external_propagator");
+}
+
+void Solver::add_observed_var (int idx) {
+  TRACE ("observe", idx);
+  REQUIRE_VALID_OR_SOLVING_STATE ();
+  REQUIRE_VALID_LIT (idx);
+  external->add_observed_var (idx);
+  LOG_API_CALL_END ("observe", idx);
+}
+
+void Solver::remove_observed_var (int idx) {
+  TRACE ("unobserve", idx);
+  REQUIRE_VALID_STATE ();
+  REQUIRE_VALID_LIT (idx);
+  external->remove_observed_var (idx);
+  LOG_API_CALL_END ("unobserve", idx);
+}
+
+void Solver::reset_observed_vars () {
+  TRACE ("reset_observed_vars");
+  REQUIRE_VALID_OR_SOLVING_STATE ();
+  external->reset_observed_vars ();
+  LOG_API_CALL_END ("reset_observed_vars");
+}
+
+/*===== IPASIR-UP END ====================================================*/
 
 int Solver::active () const {
   TRACE ("active");
@@ -1073,6 +1172,39 @@ void Solver::dump_cnf () {
   REQUIRE_INITIALIZED ();
   internal->dump ();
   LOG_API_CALL_END ("dump");
+}
+
+/*------------------------------------------------------------------------*/
+
+ExternalPropagator *Solver::get_propagator () {
+  return external->propagator;
+}
+
+bool Solver::observed (int lit) {
+  TRACE ("observed", lit);
+  REQUIRE_VALID_OR_SOLVING_STATE ();
+  REQUIRE_VALID_LIT (lit);
+  bool res = external->observed (lit);
+  LOG_API_CALL_RETURNS ("observed", lit, res);
+  return res;
+}
+
+bool Solver::is_witness (int lit) {
+  TRACE ("is_witness", lit);
+  REQUIRE_VALID_OR_SOLVING_STATE ();
+  REQUIRE_VALID_LIT (lit);
+  bool res = external->is_witness (lit);
+  LOG_API_CALL_RETURNS ("is_witness", lit, res);
+  return res;
+}
+
+bool Solver::is_decision (int lit) {
+  TRACE ("is_decision", lit);
+  REQUIRE_VALID_OR_SOLVING_STATE ();
+  REQUIRE_VALID_LIT (lit);
+  bool res = external->is_decision (lit);
+  LOG_API_CALL_RETURNS ("is_decision", lit, res);
+  return res;
 }
 
 /*------------------------------------------------------------------------*/

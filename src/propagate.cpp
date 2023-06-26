@@ -15,6 +15,10 @@ namespace CaDiCaL {
 // a zero pointer as reason.  Now only units have a zero reason and
 // decisions need to use the pseudo reason 'decision_reason'.
 
+// External propagation steps use the pseudo reason 'external_reason'.
+// The corresponding actual reason clauses are learned only when they are
+// relevant in conflict analysis or in root-level fixing steps.
+
 static Clause decision_reason_clause;
 static Clause *decision_reason = &decision_reason_clause;
 
@@ -27,10 +31,14 @@ static Clause *decision_reason = &decision_reason_clause;
 // current decision level, the concept of assignment level does not make
 // sense, and accordingly this function can be skipped.
 
+// In case of external propagation, it is implicitly assumed that the
+// assignment level is the level of the literal (since the reason clause,
+// i.e., the set of other literals, is unknown).
+
 inline int Internal::assignment_level (int lit, Clause *reason) {
 
-  assert (opts.chrono);
-  if (!reason)
+  assert (opts.chrono || external_prop);
+  if (!reason || reason == external_reason)
     return level;
 
   int res = 0;
@@ -105,16 +113,31 @@ inline void Internal::search_assign (int lit, Clause *reason) {
 
   const int idx = vidx (lit);
   assert (!vals[idx]);
-  assert (!flags (idx).eliminated () || reason == decision_reason);
+  assert (!flags (idx).eliminated () || reason == decision_reason ||
+          reason == external_reason);
   Var &v = var (idx);
   int lit_level;
-
-  assert (!opts.lrat || opts.lratexternal || level ||
-          reason == decision_reason || !lrat_chain.empty ());
-
+  assert (!opts.lrat || opts.lratexternal || level || reson == external_reason
+            reason == decision_reason || !lrat_chain.empty ());
+  if (reason == external_reason &&
+      ((size_t) level <= assumptions.size () + (!!constraint.size ()))) {
+    // On the pseudo-decision levels every external propagation must be
+    // explained eagerly, in order to avoid complications during conflict
+    // analysis.
+    // TODO: refine this eager explanation step.
+    LOG ("Too low decision level to store external reason of: %d", lit);
+    reason = learn_external_reason_clause (lit);
+  }
   // The following cases are explained in the two comments above before
   // 'decision_reason' and 'assignment_level'.
   //
+  // External decision reason means that the propagation was done by
+  // an external propagation and the reason clause not known (yet).
+  // In that case it is assumed that the propagation is NOT out of
+  // order (i.e. lit_level = level), because due to lazy explanation,
+  // we can not calculate the real assignment level.
+  // The function assignment_level () will also assign the current level
+  // to literals with external reason.
   if (!reason)
     lit_level = 0; // unit
   else if (reason == decision_reason)
@@ -177,6 +200,7 @@ void Internal::search_assume_decision (int lit) {
   assert (propagated == trail.size ());
   level++;
   control.push_back (Level (lit, trail.size ()));
+  notify_decision ();
   LOG ("search decide %d", lit);
   search_assign (lit, decision_reason);
 }
@@ -184,6 +208,13 @@ void Internal::search_assume_decision (int lit) {
 void Internal::search_assign_driving (int lit, Clause *c) {
   require_mode (SEARCH);
   search_assign (lit, c);
+  notify_assignments ();
+}
+
+void Internal::search_assign_external (int lit) {
+  require_mode (SEARCH);
+  search_assign (lit, external_reason);
+  notify_assignments ();
 }
 
 /*------------------------------------------------------------------------*/
@@ -272,6 +303,7 @@ bool Internal::propagate () {
         }
 
       } else {
+        assert (w.clause->size > 2);
 
         if (conflict)
           break; // Stop if there was a binary conflict already.
@@ -458,6 +490,89 @@ bool Internal::propagate () {
   STOP (propagate);
 
   return !conflict;
+}
+
+/*------------------------------------------------------------------------*/
+
+void Internal::propergate () {
+
+  assert (!conflict);
+  assert (propagated == trail.size ());
+
+  while (propergated != trail.size ()) {
+
+    const int lit = -trail[propergated++];
+    LOG ("propergating %d", -lit);
+    Watches &ws = watches (lit);
+
+    const const_watch_iterator eow = ws.end ();
+    watch_iterator j = ws.begin ();
+    const_watch_iterator i = j;
+
+    while (i != eow) {
+
+      const Watch w = *j++ = *i++;
+
+      if (w.binary ()) {
+        assert (val (w.blit) > 0);
+        continue;
+      }
+      if (w.clause->garbage) {
+        j--;
+        continue;
+      }
+
+      literal_iterator lits = w.clause->begin ();
+
+      const int other = lits[0] ^ lits[1] ^ lit;
+      const signed char u = val (other);
+
+      if (u > 0)
+        continue;
+      assert (u < 0);
+
+      const int size = w.clause->size;
+      const literal_iterator middle = lits + w.clause->pos;
+      const const_literal_iterator end = lits + size;
+      literal_iterator k = middle;
+
+      int r = 0;
+      signed char v = -1;
+
+      while (k != end && (v = val (r = *k)) < 0)
+        k++;
+
+      if (v < 0) {
+        k = lits + 2;
+        assert (w.clause->pos <= size);
+        while (k != middle && (v = val (r = *k)) < 0)
+          k++;
+      }
+
+      assert (lits + 2 <= k), assert (k <= w.clause->end ());
+      w.clause->pos = k - lits;
+
+      assert (v > 0);
+
+      LOG (w.clause, "unwatch %d in", lit);
+
+      lits[0] = other;
+      lits[1] = r;
+      *k = lit;
+
+      watch_literal (r, lit, w.clause);
+
+      j--;
+    }
+
+    if (j != i) {
+
+      while (i != eow)
+        *j++ = *i++;
+
+      ws.resize (j - ws.begin ());
+    }
+  }
 }
 
 } // namespace CaDiCaL

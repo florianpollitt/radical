@@ -159,8 +159,9 @@ bool Internal::decompose_round () {
     }
   }
 
-  int non_trivial_sccs = 0, substituted = 0;
+  int substituted = 0;
 #ifndef QUIET
+  int non_trivial_sccs = 0;
   int before = active ();
 #endif
   unsigned dfs_idx = 0;
@@ -322,6 +323,7 @@ bool Internal::decompose_round () {
                     repr = other;
 #ifndef QUIET
                   size++;
+#endif
                 }
               } while (!unsat && other != parent);
 
@@ -357,8 +359,10 @@ bool Internal::decompose_round () {
                 clear_analyzed_literals ();
               } while (other != parent);
 
+#ifndef QUIET
               if (size > 1)
                 non_trivial_sccs++;
+#endif
 
             } else {
 
@@ -575,6 +579,11 @@ bool Internal::decompose_round () {
         (void) shrink_clause (c, l);
       } else if (likely_to_be_kept_clause (c))
         mark_added (c);
+      // we have assert (c->size > 2)
+      // if (c->size == 2) { // cheaper to update only new binary clauses
+      //  update_watch_size (watches (c->literals[0]), c->literals[1], c);
+      //  update_watch_size (watches (c->literals[1]), c->literals[0], c);
+      // }
       LOG (c, "substituted");
     }
     while (!clause.empty ()) {

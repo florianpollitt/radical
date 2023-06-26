@@ -26,6 +26,23 @@ struct Stats {
     int64_t walk;        // propagated during local search
   } propagations;
 
+  struct {
+    int64_t ext_cb;     // number of times any external callback was called
+    int64_t eprop_call; // number of times external_propagate was called
+    int64_t eprop_prop; // number of times external propagate propagated
+    int64_t
+        eprop_conf; // number of times ex-propagate was already falsified
+    int64_t eprop_expl; // number of times external propagate was explained
+    int64_t
+        elearn_call;  // number of times external clause learning was tried
+    int64_t elearned; // learned external clauses (incl. eprop explanations)
+    int64_t
+        elearn_prop; // number of learned and propagating external clauses
+    int64_t
+        elearn_conf; // number of learned and conflicting external clauses
+    int64_t echeck_call; // number of checking found complete solutions
+  } ext_prop;
+
   int64_t condassinit;  // initial assigned literals
   int64_t condassirem;  // initial assigned literals for blocked
   int64_t condassrem;   // remaining assigned literals for blocked
@@ -187,8 +204,12 @@ struct Stats {
   int64_t shrunken;     // shrunken literals
   int64_t minishrunken; // shrunken during minimization literals
 
-  int64_t irrbytes;      // bytes of irredundant clauses
-  int64_t garbage;       // bytes current irredundant garbage clauses
+  int64_t irrlits; // literals in irredundant clauses
+  struct {
+    int64_t bytes;
+    int64_t clauses;
+    int64_t literals;
+  } garbage;
   int64_t units;         // learned unit clauses
   int64_t binaries;      // learned binary clauses
   int64_t probingphases; // number of scheduled probing phases
@@ -222,6 +243,11 @@ struct Stats {
     int64_t substituted; // number of substituted variables
     int64_t pure;        // number of pure literals
   } all, now;
+
+  struct {
+    int64_t strengthened; // number of clauses strengthened during OTFS
+    int64_t subsumed;     // number of clauses subsumed by OTFS
+  } otfs;
 
   int64_t unused;   // number of unused variables
   int64_t active;   // number of active variables

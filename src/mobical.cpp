@@ -2,6 +2,7 @@
 /* Copyright (C) 2018-2021 Armin Biere, Johannes Kepler University Linz   */
 /* Copyright (C) 2020 Mathias Fleury, Johannes Kepler University Linz     */
 /* Copyright (c) 2020-2021 Nils Froleyks, Johannes Kepler University Linz */
+/* Copyright (C) 2022-2023 Katalin Fazekas, Technical University of Vienna*/
 /*------------------------------------------------------------------------*/
 
 // Model Based Tester for the CaDiCaL SAT Solver Library.
@@ -73,6 +74,10 @@ static const char *USAGE =
     "  --dump  | -d      force dumping the CNF before every 'solve'\n"
     "  --stats | -s      force printing statistics after every 'solve'\n"
     "\n"
+    "Implicitly add 'configure plain' after setting options:\n"
+    "\n"
+    "  --plain | -p\n" // TODO all configurations?
+    "\n"
     "Otherwise if no '<mode>' is specified the default is to generate\n"
     "random traces internally until the execution of a trace fails, which\n"
     "means it produces a non-zero exit code.  Then the trace is rerun and\n"
@@ -126,6 +131,11 @@ static const char *USAGE =
 #include <iostream>
 #include <sstream>
 #include <vector>
+
+// MockPropagator
+#include <deque>
+#include <map>
+#include <set>
 
 /*------------------------------------------------------------------------*/
 
@@ -206,6 +216,319 @@ struct Shared {
   int64_t timeout;
 };
 
+/*------------------------------------------------------------------------*/
+
+class MockPropagator : public ExternalPropagator {
+private:
+  Solver *s = 0;
+
+  std::vector<int> clause;
+  std::vector<std::vector<int>> all_external_clauses;
+
+  std::set<int> observed_variables;
+  std::vector<int> new_observed_variables;
+  std::deque<int> added_new_observed_variables;
+  std::deque<std::vector<int>> observed_trail;
+  bool new_ovars = false;
+
+  size_t nof_clauses = 0;
+  size_t nof_added_clauses = 0;
+  int lemma_count = 0;
+
+  std::vector<int> lemmas_per_queries;
+
+  // Internal bookkeeping about where are we in the sequence of all lemmas
+  size_t query_loc = 0;
+  size_t lemma_loc = 0;
+  size_t lemma_lit_loc = 0;
+  bool must_add_clause = false;
+  size_t must_add_idx;
+
+  size_t decision_loc = 0;
+
+  std::map<int, int> reason_map;
+  std::map<int, size_t> prop_reason_loc;
+
+public:
+  MockPropagator (Solver *solver) {
+    observed_trail.push_back (std::vector<int> ());
+    s = solver;
+    lemmas_per_queries.push_back (0);
+  }
+
+  ~MockPropagator () {}
+
+  /*-----------------functions for mobical -----------------------------*/
+  void push_lemma_lit (int lit) {
+    clause.push_back (lit);
+    if (!lit) {
+      nof_clauses++;
+      lemma_count++;
+
+      all_external_clauses.push_back (clause);
+      clause.clear ();
+      lemmas_per_queries.back ()++;
+
+      if (lemma_count % 3 == 0) {
+        lemmas_per_queries.push_back (0);
+        lemma_count = 0;
+      }
+    }
+  }
+
+  // void push_continue () {
+  //   assert (!clause.size ());
+  //   lemmas_per_queries.push_back (lemma_count % 3);
+  //   lemma_count = 0;
+  // }
+
+  void add_observed_lit (int lit) {
+    // Zero lit indicates that the new observed variables start here
+    if (!lit) {
+      assert (!new_ovars);
+      new_ovars = true;
+      return;
+    }
+
+    if (!new_ovars) {
+      if (!s->is_witness (abs (lit))) {
+        s->add_observed_var (abs (lit));
+        observed_variables.insert (abs (lit));
+      }
+    } else {
+      new_observed_variables.push_back (abs (lit));
+    }
+  }
+
+  int add_new_observed_var () {
+    for (std::vector<int>::iterator it = new_observed_variables.begin ();
+         it != new_observed_variables.end (); ++it) {
+      int lit = *it;
+      if (s->is_witness (lit))
+        continue;
+      new_observed_variables.erase (it);
+      observed_variables.insert (lit);
+
+      s->add_observed_var (lit);
+      added_new_observed_variables.push_front (lit);
+      return lit;
+    }
+    return 0;
+  }
+
+  int remove_new_observed_var () {
+    // TODO: check out red-02744449867227930989.trace
+    return 0;
+  }
+  /*-----------------functions for mobical ends ------------------------*/
+
+  bool cb_check_found_model (const std::vector<int> &model) {
+    // 'all_external_clauses' contains also the propagating (but not
+    // necessarily learnt) clauses. The final solution must satisfy only the
+    // initial input set of clauses.
+    assert (model.size () == observed_variables.size ());
+    assert (nof_added_clauses <= nof_clauses);
+
+    for (size_t i = 0; i < nof_clauses; i++) {
+      bool satisfied = false;
+
+      for (const auto lit : all_external_clauses[i]) {
+        if (!lit)
+          continue; // eoc
+
+        auto search = std::find (model.begin (), model.end (), lit);
+        if (search != model.end ()) {
+          satisfied = true;
+          break;
+        } else {
+          // if not satisfied, it must be falsified.
+          search = std::find (model.begin (), model.end (), -lit);
+          assert (search != model.end ());
+        }
+      }
+
+      if (!satisfied) {
+        // All already added clauses must be satisfied by the model.
+        assert (i >= nof_added_clauses);
+        assert (i < nof_clauses);
+
+        // Ensure that next has_external_clause query returns true.
+        // But this next clause is, on purpose, not necessarily the
+        // unsatisfied one, just simply the next clause.
+        must_add_clause = true;
+        must_add_idx = i;
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool cb_has_external_clause () {
+    add_new_observed_var ();
+    if (must_add_clause) {
+      assert (nof_added_clauses < nof_clauses);
+      assert (query_loc < lemmas_per_queries.size ());
+      lemmas_per_queries[query_loc]--;
+      must_add_clause = false;
+      return true;
+    }
+    if (query_loc >= lemmas_per_queries.size ())
+      return false;
+    if (lemmas_per_queries[query_loc] > 0) {
+      add_new_observed_var ();
+      lemmas_per_queries[query_loc]--;
+      return true;
+    } else {
+      query_loc++;
+      return false;
+    }
+  }
+
+  int cb_add_external_clause_lit () {
+    assert (lemma_loc < all_external_clauses.size ());
+    assert (lemma_lit_loc < all_external_clauses[lemma_loc].size ());
+    int lit = all_external_clauses[lemma_loc][lemma_lit_loc++];
+
+    if (!lit) {
+      lemma_loc++;
+      lemma_lit_loc = 0;
+      nof_added_clauses++;
+    }
+
+    return lit;
+  }
+
+  int cb_decide () {
+    if (observed_variables.empty () || observed_variables.size () <= 4)
+      return 0;
+
+    if (!(observed_variables.size () % 5) &&
+        new_observed_variables.size ()) {
+      int new_var = add_new_observed_var ();
+      if (new_var)
+        return -1 * new_var;
+    }
+    decision_loc++;
+
+    if ((decision_loc % observed_variables.size ()) == 0) {
+      size_t n = decision_loc / observed_variables.size ();
+      if (n < observed_variables.size ()) {
+        int lit = *std::next (observed_variables.begin (), n);
+        return -1 * lit;
+      } else
+        return 0;
+    }
+    return 0;
+  }
+
+  int cb_propagate () {
+
+    if (observed_trail.size () < 2)
+      return 0;
+    std::set<int> satisfied_literals;
+    std::vector<int> satisfied_literals_ends;
+    size_t lit_sum = 0;
+    int last_lit = 0;
+
+    for (auto level_lits : observed_trail) {
+      for (auto lit : level_lits) {
+        if (!s->observed (lit))
+          continue;
+        satisfied_literals.insert (lit);
+        lit_sum += abs (lit);
+        last_lit = lit;
+        if (!satisfied_literals_ends.size ())
+          satisfied_literals_ends.push_back (lit);
+      }
+    }
+
+    if (last_lit)
+      satisfied_literals_ends.push_back (last_lit);
+    else
+      return 0;
+
+    int unassigned_var = 0;
+    for (auto v : observed_variables) {
+      auto search = satisfied_literals.find (v);
+      if (search == satisfied_literals.end ()) {
+        search = satisfied_literals.find (-1 * v);
+        if (search == satisfied_literals.end ()) {
+          unassigned_var = v;
+          break;
+        }
+      }
+    }
+    if (!unassigned_var)
+      return 0;
+
+    bool propagated = false;
+    if (lit_sum % 5 == 0 && satisfied_literals.size () > 1) {
+      all_external_clauses.emplace_back (std::initializer_list<int>{
+          unassigned_var, -1 * satisfied_literals_ends.back (),
+          -1 * satisfied_literals_ends.front (), 0});
+      propagated = true;
+    } else if (lit_sum % 7 == 0 && satisfied_literals.size () > 0) {
+      all_external_clauses.emplace_back (std::initializer_list<int>{
+          unassigned_var, -1 * satisfied_literals_ends.back (), 0});
+      propagated = true;
+    } else if (lit_sum % 11 == 0) {
+      all_external_clauses.emplace_back (
+          std::initializer_list<int>{unassigned_var, 0});
+      propagated = true;
+    } else if (lit_sum > 15 && satisfied_literals_ends.size ()) {
+      // test case where a falsified literal is propagated
+      int l1 = -1 * satisfied_literals_ends.back ();
+      int l2 = -1 * satisfied_literals_ends.front ();
+      // It is ok if l1 == l2
+      all_external_clauses.emplace_back (
+          std::initializer_list<int>{l1, l2, 0});
+      reason_map[l1] = all_external_clauses.size () - 1;
+      prop_reason_loc[l1] = 0;
+
+      return l1;
+    }
+
+    if (propagated) {
+      reason_map[unassigned_var] = all_external_clauses.size () - 1;
+      prop_reason_loc[unassigned_var] = 0;
+      return unassigned_var;
+    } else
+      return 0;
+  }
+
+  int cb_add_reason_clause_lit (int plit) {
+    assert (reason_map.find (plit) != reason_map.end ());
+    assert (prop_reason_loc[plit] <
+            all_external_clauses[reason_map[plit]].size ());
+    int lit =
+        all_external_clauses[reason_map[plit]][prop_reason_loc[plit]++];
+    if (!lit) {
+      prop_reason_loc[plit] = 0; // in case it is needed again
+    }
+    return lit;
+  }
+
+  void notify_assignment (int lit, bool is_fixed) {
+    if (is_fixed) {
+      observed_trail.front ().push_back (lit);
+    } else {
+      observed_trail.back ().push_back (lit);
+    }
+  }
+
+  void notify_new_decision_level () {
+    observed_trail.push_back (std::vector<int> ());
+  }
+
+  void notify_backtrack (size_t new_level) {
+    assert (observed_trail.size () == 1 ||
+            observed_trail.size () >= new_level + 1);
+    while (observed_trail.size () > new_level + 1) {
+      observed_trail.pop_back ();
+    }
+  }
+};
+
 // This is the class for the Mobical application.
 
 class Mobical : public Handler {
@@ -216,7 +539,10 @@ class Mobical : public Handler {
   friend class Reader;
   friend class Trace;
   friend struct ValCall;
+  friend struct FlipCall;
+  friend struct FlippableCall;
   friend struct MeltCall;
+  friend class MockPropagator;
 
   /*----------------------------------------------------------------------*/
 
@@ -242,6 +568,7 @@ class Mobical : public Handler {
 #endif
   bool add_dump_before_solve;
   bool add_stats_after_solve;
+  bool add_plain_after_options;
 
   /*----------------------------------------------------------------------*/
 
@@ -398,14 +725,15 @@ void Mobical::warning (const char *fmt, ...) {
 //   INIT
 //   (SET|ALWAYS)*
 //   (   (ADD|ASSUME|ALWAYS)*
-//       [ (SOLVE|SIMPLIFY|LOOKAHEAD) (VAL|FAILED|ALWAYS)* ]
+//       [ (SOLVE|SIMPLIFY|LOOKAHEAD) (LEMMA|CONTINUE)*
+//       (VAL|FLIP|FAILED|ALWAYS)* ]
 //   )*
 //   [ RESET ]
 //
 // where 'ALWAYS' calls as defined below do not change the state.  With
 // the other short-cuts below we can abstract this to
 //
-//   CONFIG* (BEFORE* [ PROCESS AFTER* ] )* [ RESET ]
+//   CONFIG* (BEFORE* [ PROCESS DURING* AFTER* ] )* [ RESET ]
 //
 // If traces are read then they are checked to have this structure.  We
 // check that 'ADD' sequences terminate by adding zero literal before
@@ -449,30 +777,40 @@ struct Call {
     CUBING = (1 << 13),
 
     VAL = (1 << 14),
-    FAILED = (1 << 15),
-    FIXED = (1 << 16),
+    FLIP = (1 << 15),
+    FLIPPABLE = (1 << 16),
+    FAILED = (1 << 17),
+    FIXED = (1 << 18),
 
-    FREEZE = (1 << 17),
-    FROZEN = (1 << 18),
-    MELT = (1 << 19),
+    FREEZE = (1 << 19),
+    FROZEN = (1 << 20),
+    MELT = (1 << 21),
 
-    LIMIT = (1 << 20),
-    OPTIMIZE = (1 << 21),
+    LIMIT = (1 << 22),
+    OPTIMIZE = (1 << 23),
 
-    DUMP = (1 << 22),
-    STATS = (1 << 23),
+    DUMP = (1 << 24),
+    STATS = (1 << 25),
 
-    RESET = (1 << 24),
+    RESET = (1 << 26),
 
-    CONSTRAIN = (1 << 25),
+    CONSTRAIN = (1 << 27),
+
+    CONNECT = (1 << 28),
+    OBSERVE = (1 << 29),
+    LEMMA = (1 << 30),
+    // CONTINUE = (1 << 31),
+    DISCONNECT = (1 << 31),
 
     ALWAYS = VARS | ACTIVE | REDUNDANT | IRREDUNDANT | FREEZE | FROZEN |
              MELT | LIMIT | OPTIMIZE | DUMP | STATS | RESERVE | FIXED,
 
     CONFIG = INIT | SET | CONFIGURE | ALWAYS,
-    BEFORE = ADD | CONSTRAIN | ASSUME | ALWAYS,
+    BEFORE =
+        ADD | CONSTRAIN | ASSUME | ALWAYS | DISCONNECT | CONNECT | OBSERVE,
     PROCESS = SOLVE | SIMPLIFY | LOOKAHEAD | CUBING,
-    AFTER = VAL | FAILED | ALWAYS,
+    DURING = LEMMA, // | CONTINUE,
+    AFTER = VAL | FLIP | FAILED | ALWAYS,
   };
 
   Type type; // Explicit typing.
@@ -508,6 +846,10 @@ static bool before_type (Call::Type t) {
 
 static bool process_type (Call::Type t) {
   return (((int) t & (int) Call::PROCESS)) != 0;
+}
+
+static bool during_type (Call::Type t) {
+  return (((int) t & (int) Call::DURING)) != 0;
 }
 
 static bool after_type (Call::Type t) {
@@ -630,6 +972,74 @@ struct ConstrainCall : public Call {
   const char *keyword () { return "constrain"; }
 };
 
+struct ConnectCall : public Call {
+  ConnectCall () : Call (CONNECT) {}
+  void execute (Solver *&s) {
+    s->connect_external_propagator (new MockPropagator (s));
+  }
+  void print (ostream &o) { o << "connect mock-propagator" << endl; }
+  Call *copy () { return new ConnectCall (); }
+  const char *keyword () { return "connect"; }
+};
+
+struct ObserveCall : public Call {
+  ObserveCall (int l) : Call (OBSERVE, l) {}
+  void execute (Solver *&s) {
+    MockPropagator *mp =
+        static_cast<MockPropagator *> (s->get_propagator ());
+    if (mp) {
+      mp->add_observed_lit (arg);
+    }
+  }
+  void print (ostream &o) { o << "observe " << arg << endl; }
+  Call *copy () { return new ObserveCall (arg); }
+  const char *keyword () { return "observe"; }
+};
+
+struct LemmaCall : public Call {
+  LemmaCall (int l) : Call (LEMMA, l) {}
+  void execute (Solver *&s) {
+    MockPropagator *mp =
+        static_cast<MockPropagator *> (s->get_propagator ());
+
+    if (mp && (!arg || s->observed (arg))) { // || mobical.donot.enforce
+      mp->push_lemma_lit (arg);
+    }
+  }
+  void print (ostream &o) { o << "lemma " << arg << endl; }
+  Call *copy () { return new LemmaCall (arg); }
+  const char *keyword () { return "lemma"; }
+};
+
+// struct ContinueCall : public Call {
+//   ContinueCall () : Call (CONTINUE) {}
+//   void execute (Solver *&s) {
+//     MockPropagator *mp =
+//         static_cast<MockPropagator *> (s->get_propagator ());
+
+//     if (mp) // || mobical.donot.enforce
+//       mp->push_continue ();
+//   }
+//   void print (ostream &o) { o << "continue" << endl; }
+//   Call *copy () { return new ContinueCall (); }
+//   const char *keyword () { return "continue"; }
+// };
+
+struct DisconnectCall : public Call {
+  DisconnectCall () : Call (DISCONNECT) {}
+  void execute (Solver *&s) {
+    MockPropagator *mp =
+        static_cast<MockPropagator *> (s->get_propagator ());
+    mp->remove_new_observed_var ();
+    s->disconnect_external_propagator ();
+    if (mp)
+      delete mp;
+  }
+  void print (ostream &o) { o << "disconnect mock-propagator" << endl; }
+  Call *copy () { return new DisconnectCall (); }
+  const char *keyword () { return "disconnect"; }
+};
+
 struct AssumeCall : public Call {
   AssumeCall (int l) : Call (ASSUME, l) {}
   void execute (Solver *&s) { s->assume (arg); }
@@ -683,6 +1093,38 @@ struct ValCall : public Call {
   void print (ostream &o) { o << "val " << arg << ' ' << res << endl; }
   Call *copy () { return new ValCall (arg, res); }
   const char *keyword () { return "val"; }
+};
+
+struct FlipCall : public Call {
+  FlipCall (int l, int r = 0) : Call (FLIP, l, r) {}
+  void execute (Solver *&s) {
+    if (mobical.donot.enforce)
+      res = s->flip (arg);
+    else if (s->state () == SATISFIED)
+      res = s->flip (arg);
+    else
+      res = 0;
+  }
+  void print (ostream &o) { o << "flip " << arg << ' ' << res << endl; }
+  Call *copy () { return new FlipCall (arg, res); }
+  const char *keyword () { return "flip"; }
+};
+
+struct FlippableCall : public Call {
+  FlippableCall (int l, int r = 0) : Call (FLIPPABLE, l, r) {}
+  void execute (Solver *&s) {
+    if (mobical.donot.enforce)
+      res = s->flippable (arg);
+    else if (s->state () == SATISFIED)
+      res = s->flippable (arg);
+    else
+      res = 0;
+  }
+  void print (ostream &o) {
+    o << "flippable " << arg << ' ' << res << endl;
+  }
+  Call *copy () { return new FlipCall (arg, res); }
+  const char *keyword () { return "flippable"; }
 };
 
 struct FixedCall : public Call {
@@ -810,6 +1252,25 @@ public:
     bool first = true;
     for (size_t i = 0; i < calls.size (); i++) {
       Call *c = calls[i];
+      // They are (ideally) are executed already
+      if (c->type == Call::LEMMA)
+        continue;
+      // if (c->type == Call::CONTINUE)
+      //   continue;
+
+      if (c->type == Call::SOLVE) {
+        // Look ahead and collect LemmaCalls to be executed
+        // before solve is executed
+        for (size_t j = i + 1; j < calls.size (); j++) {
+          Call *next_c = calls[j];
+          if (next_c->type == Call::LEMMA)
+            next_c->execute (solver);
+          // else if (next_c->type == Call::CONTINUE)
+          //   next_c->execute (solver);
+          else
+            break;
+        }
+      }
       if (mobical.shared && process_type (c->type)) {
         mobical.shared->solved++;
         if (first)
@@ -862,7 +1323,8 @@ public:
     bool last = true;
     for (size_t i = 0; i < calls.size (); i++) {
       Call *c = calls[i];
-      if (last && c->type != Call::VAL && c->type != Call::FAILED &&
+      if (last && c->type != Call::VAL && c->type != Call::FLIP &&
+          c->type != Call::FLIPPABLE && c->type != Call::FAILED &&
           c->type != Call::FROZEN && c->type != Call::RESET)
         res++, last = false;
       if (process_type (c->type))
@@ -901,9 +1363,14 @@ private:
   typedef vector<Segment> Segments;
   bool shrink_segments (Segments &, int expected);
 
+  vector<int> observed_vars;
+  bool in_connection = false;
+
   void add_options (int expected);
   bool shrink_phases (int expected);
   bool shrink_clauses (int expected);
+  bool shrink_userphases (int expected);
+  bool shrink_lemmas (int expected);
   bool shrink_literals (int expected);
   bool shrink_basic (int expected);
   bool shrink_disable (int expected);
@@ -926,10 +1393,14 @@ private:
   void generate_assume (Random &, int vars);
   void generate_process (Random &);
   void generate_values (Random &, int vars);
+  void generate_flipped (Random &, int vars);
   void generate_frozen (Random &, int vars);
   void generate_failed (Random &, int vars);
   void generate_freeze (Random &, int vars);
   void generate_melt (Random &);
+
+  void generate_propagator (Random &, int minvars, int maxvars);
+  void generate_lemmas (Random &);
 
   void generate_limits (Random &);
 };
@@ -1278,6 +1749,87 @@ void Trace::generate_constraint (Random &random, int minvars, int maxvars,
 
 /*------------------------------------------------------------------------*/
 
+void Trace::generate_propagator (Random &random, int minvars, int maxvars) {
+  if (random.generate_double () < 0.15)
+    return;
+
+  assert (minvars <= maxvars);
+  if (in_connection)
+    push_back (new DisconnectCall ());
+  push_back (new ConnectCall ());
+
+  in_connection = true;
+
+  observed_vars.clear ();
+
+  for (int idx = minvars; idx <= maxvars; idx++) {
+    if (random.generate_double () < 0.6)
+      continue;
+    int lit = random.generate_bool () ? -idx : idx;
+    push_back (new ObserveCall (lit));
+    observed_vars.push_back (abs (lit));
+  }
+  push_back (new ObserveCall (0));
+  for (int idx = maxvars + 1; idx <= maxvars * 1.5; idx++) {
+    if (random.generate_double () < 0.75)
+      continue;
+    int lit = random.generate_bool () ? -idx : idx;
+    push_back (new ObserveCall (lit));
+    observed_vars.push_back (abs (lit));
+  }
+}
+
+void Trace::generate_lemmas (Random &random) {
+  if (!observed_vars.size ())
+    return;
+  int nof_user_propagation_phases = random.pick_int (3, 7);
+
+  for (int p = 0; p < nof_user_propagation_phases; p++) {
+    if (random.generate_double () < 0.05) {
+      // push_back (new ContinueCall ());
+    } else {
+      const int nof_lemmas = random.pick_int (4, 11);
+      const int ovars = observed_vars.size ();
+      for (int i = 0; i < nof_lemmas; i++) {
+        // Tiny tiny chance to generate an empty lemma
+        if (random.generate_double () < 0.005) {
+          push_back (new LemmaCall (0));
+        } else {
+          int count = pick_size (random, 4);
+          if (count > ovars)
+            count = ovars;
+          const int max_idx = ovars - 1;
+          bool *picked = new bool[max_idx + 1];
+          for (int i = 0; i <= max_idx; i++)
+            picked[i] = false;
+          for (int i = 0; i < count; i++) {
+            int idx;
+            do
+              idx = random.pick_int (0, max_idx);
+            while (picked[idx]);
+            picked[idx] = 1;
+            int lit = random.generate_bool () ? -observed_vars[idx]
+                                              : observed_vars[idx];
+            push_back (new LemmaCall (lit));
+          }
+
+          delete[] picked;
+          if (random.generate_double () < 0.1) {
+            int idx = random.pick_int (0, max_idx);
+            int lit = random.generate_bool () ? -observed_vars[idx]
+                                              : observed_vars[idx];
+            push_back (new LemmaCall (lit));
+          }
+          push_back (new LemmaCall (0));
+        }
+      }
+      // push_back (new ContinueCall ());
+    }
+  }
+}
+
+/*------------------------------------------------------------------------*/
+
 void Trace::generate_assume (Random &random, int vars) {
   if (random.generate_double () < 0.15)
     return;
@@ -1321,6 +1873,29 @@ void Trace::generate_values (Random &random, int vars) {
     int idx = random.pick_int (vars + 1, vars * 1.5 + 1);
     int lit = random.generate_bool () ? -idx : idx;
     push_back (new ValCall (lit));
+  }
+}
+
+void Trace::generate_flipped (Random &random, int vars) {
+  if (random.generate_double () < 0.5)
+    return;
+  double fraction = random.generate_double ();
+  for (int idx = 1; idx <= vars; idx++) {
+    if (fraction < random.generate_double ())
+      continue;
+    int lit = random.generate_bool () ? -idx : idx;
+    if (random.generate_double () < 0.5)
+      push_back (new FlippableCall (lit));
+    else
+      push_back (new FlipCall (lit));
+  }
+  if (random.generate_double () < 0.1) {
+    int idx = random.pick_int (vars + 1, vars * 1.5 + 1);
+    int lit = random.generate_bool () ? -idx : idx;
+    if (random.generate_double () < 0.5)
+      push_back (new FlippableCall (lit));
+    else
+      push_back (new FlipCall (lit));
   }
 }
 
@@ -1410,9 +1985,11 @@ void Trace::generate_process (Random &random) {
 
   const double fraction = random.generate_double ();
 
-  if (fraction < 0.6)
+  if (fraction < 0.6) {
     push_back (new SolveCall ());
-  else if (fraction > 0.99) {
+    if (in_connection && observed_vars.size ())
+      generate_lemmas (random);
+  } else if (fraction > 0.99) {
     const int depth = random.pick_int (0, 10);
     push_back (new CubingCall (depth));
   } else if (fraction > 0.9)
@@ -1454,6 +2031,9 @@ void Trace::generate (uint64_t i, uint64_t s) {
   }
 
   generate_options (random, size);
+
+  if (mobical.add_plain_after_options)
+    push_back (new ConfigureCall ("plain"));
 
   int calls;
   if (mobical.force.phases < 0)
@@ -1512,6 +2092,13 @@ void Trace::generate (uint64_t i, uint64_t s) {
       generate_queries (random), generate_reserve (random, maxvars),
           generate_clause (random, minvars, maxvars, uniform);
 
+    if (in_connection && random.generate_bool ()) {
+      observed_vars.clear ();
+      push_back (new DisconnectCall ());
+      in_connection = false;
+    } else
+      generate_propagator (random, minvars, maxvars);
+
     generate_constraint (random, minvars, maxvars, uniform);
     generate_assume (random, maxvars);
     generate_melt (random);
@@ -1521,6 +2108,8 @@ void Trace::generate (uint64_t i, uint64_t s) {
     generate_process (random);
 
     generate_values (random, maxvars);
+    if (!in_connection)
+      generate_flipped (random, maxvars);
     generate_failed (random, maxvars);
     generate_frozen (random, maxvars);
   }
@@ -1881,7 +2470,8 @@ void Mobical::notify (Trace &trace, signed char ch) {
 // Explicit grammar aware three-level hierarchical delta-debugging.
 // First level is in term of incremental solving phases where one phase
 // consists of maximal prefixes of intervals of calls of type
-// '(BEFORE*|PROCESS|AFTER*)' or single non-configuration calls.
+// '(BEFORE*| PROCESS | DURING* | AFTER*)' or single non-configuration
+// calls.
 //
 bool Trace::shrink_phases (int expected) {
   if (mobical.donot.shrink.phases)
@@ -1897,6 +2487,8 @@ bool Trace::shrink_phases (int expected) {
       ;
     if (r < size () && process_type (calls[r]->type))
       r++;
+    for (; r < size () && during_type (calls[r]->type); r++)
+      ;
     for (; r < size () && after_type (calls[r]->type); r++)
       ;
     if (l < r)
@@ -1911,7 +2503,7 @@ bool Trace::shrink_phases (int expected) {
   return shrink_segments (segments, expected);
 }
 
-// The second level ties to remove clauses.
+// The second level tries to remove clauses.
 //
 bool Trace::shrink_clauses (int expected) {
   if (mobical.donot.shrink.clauses)
@@ -1932,6 +2524,49 @@ bool Trace::shrink_clauses (int expected) {
   return shrink_segments (segments, expected);
 }
 
+bool Trace::shrink_userphases (int expected) {
+  // TODO: introduce donot-shrink-lemmas
+  // if (mobical.donot.shrink.lemmas) return false;
+  notify ('a');
+  Segments segments;
+  size_t r;
+  size_t l = 1;
+  for (; l < size () && !during_type (calls[l]->type); l++)
+    ;
+  for (; l < size (); l++) {
+    if (!during_type (calls[l]->type))
+      continue;
+    r = l;
+    while (r < size () && calls[r]->type == Call::LEMMA)
+      r++;
+    // assert (calls[r]->type == Call::CONTINUE);
+    // if (r < size () && calls[r]->type == Call::CONTINUE) {
+    //   segments.push_back (Segment (l, r + 1));
+    //   l = r;
+    // }
+  }
+  return shrink_segments (segments, expected);
+}
+
+bool Trace::shrink_lemmas (int expected) {
+  // TODO: introduce donot-shrink-lemmas
+  // if (mobical.donot.shrink.lemmas) return false;
+  notify ('u');
+  Segments segments;
+  for (size_t r = size (), l; r > 1; r = l) {
+    Call *c = calls[l = r - 1];
+    while (l > 0 && (c->type != Call::LEMMA || c->arg))
+      c = calls[--l];
+    if (!l)
+      break;
+    r = l + 1;
+    while ((c = calls[--l])->type == Call::LEMMA && c->arg)
+      ;
+    segments.push_back (Segment (++l, r));
+  }
+  return shrink_segments (segments, expected);
+}
+
 // The third level tries to remove individual literals.
 //
 bool Trace::shrink_literals (int expected) {
@@ -1942,6 +2577,8 @@ bool Trace::shrink_literals (int expected) {
   for (size_t l = size () - 1; l > 0; l--) {
     Call *c = calls[l];
     if (c->type == Call::ADD && c->arg)
+      segments.push_back (Segment (l, l + 1));
+    if (c->type == Call::LEMMA && c->arg)
       segments.push_back (Segment (l, l + 1));
   }
   return shrink_segments (segments, expected);
@@ -1960,6 +2597,8 @@ static bool is_basic (Call *c) {
   case Call::IRREDUNDANT:
   case Call::RESERVE:
   case Call::VAL:
+  case Call::FLIP:
+  case Call::FLIPPABLE:
   case Call::FIXED:
   case Call::FAILED:
   case Call::FROZEN:
@@ -1967,6 +2606,7 @@ static bool is_basic (Call *c) {
   case Call::MELT:
   case Call::LIMIT:
   case Call::OPTIMIZE:
+  case Call::OBSERVE:
     return true;
   default:
     return false;
@@ -2205,10 +2845,13 @@ static bool has_lit_arg_type (Call *c) {
   case Call::FREEZE:
   case Call::MELT:
   case Call::FROZEN:
-  case Call::VAL:
+  case Call::FLIP:
+  case Call::FLIPPABLE:
   case Call::FIXED:
   case Call::FAILED:
   case Call::RESERVE:
+  case Call::LEMMA:
+  case Call::OBSERVE:
     return true;
   default:
     return false;
@@ -2305,6 +2948,8 @@ void Trace::shrink (int expected) {
     NONE = 0,
     PHASES,
     CLAUSES,
+    LEMMAS,
+    UPHASES, // How many times the propagator answers
     LITERALS,
     BASIC,
     DISABLE,
@@ -2325,6 +2970,10 @@ void Trace::shrink (int expected) {
       s = true, l = PHASES;
     if (l != CLAUSES && shrink_clauses (expected))
       s = true, l = CLAUSES;
+    if (l != UPHASES && shrink_userphases (expected))
+      s = true, l = UPHASES;
+    if (l != LEMMAS && shrink_lemmas (expected))
+      s = true, l = LEMMAS;
     if (l != LITERALS && shrink_literals (expected))
       s = true, l = LITERALS;
     if (l != BASIC && shrink_basic (expected))
@@ -2393,7 +3042,7 @@ static bool is_valid_char (int ch) {
 
 void Reader::parse () {
   int ch, lit = 0, val = 0, state = 0, adding = 0, constraining = 0,
-          solved = 0;
+          lemma_adding = 0, solved = 0;
   const bool enforce = !mobical.donot.enforce;
   Call *before_trigger = 0;
   char line[80];
@@ -2548,6 +3197,30 @@ void Reader::parse () {
         error ("invalid literal '%d' as argument to 'constrain'", lit);
       constraining = lit;
       c = new ConstrainCall (lit);
+    } else if (!strcmp (keyword, "connect")) {
+      c = new ConnectCall ();
+    } else if (!strcmp (keyword, "disconnect")) {
+      c = new DisconnectCall ();
+    } else if (!strcmp (keyword, "observe")) {
+      if (!first)
+        error ("argument to 'observe' missing");
+      if (!parse_int_str (first, lit))
+        error ("invalid argument '%s' to 'observe'", first);
+      if (second)
+        error ("additional argument '%s' to 'observe'", second);
+      c = new ObserveCall (lit);
+    } else if (!strcmp (keyword, "lemma")) {
+      if (!first)
+        error ("argument to 'lemma' missing");
+      if (!parse_int_str (first, lit))
+        error ("invalid argument '%s' to 'lemma'", first);
+      if (second)
+        error ("additional argument '%s' to 'lemma'", second);
+      // if (!lemma_adding && !lit) error ("empty lemma is learned.");
+      lemma_adding = lit;
+      c = new LemmaCall (lit);
+      // } else if (!strcmp (keyword, "continue")) {
+      //   c = new ContinueCall ();
     } else if (!strcmp (keyword, "assume")) {
       if (!first)
         error ("argument to 'assume' missing");
@@ -2615,6 +3288,36 @@ void Reader::parse () {
         c = new ValCall (lit, val);
       else
         c = new ValCall (lit);
+    } else if (!strcmp (keyword, "flip")) {
+      if (!first)
+        error ("first argument to 'flip' missing");
+      if (!parse_int_str (first, lit))
+        error ("invalid first argument '%s' to 'flip'", first);
+      if (enforce && (!lit || lit == INT_MIN))
+        error ("invalid literal '%d' as argument to 'flip'", lit);
+      if (second && !parse_int_str (second, val))
+        error ("invalid second argument '%s' to 'flip'", second);
+      if (second && val != 0 && val != 1)
+        error ("invalid result argument '%d' to 'flip", val);
+      if (second)
+        c = new FlipCall (lit, val);
+      else
+        c = new FlipCall (lit);
+    } else if (!strcmp (keyword, "flippable")) {
+      if (!first)
+        error ("first argument to 'flippable' missing");
+      if (!parse_int_str (first, lit))
+        error ("invalid first argument '%s' to 'flippable'", first);
+      if (enforce && (!lit || lit == INT_MIN))
+        error ("invalid literal '%d' as argument to 'flippable'", lit);
+      if (second && !parse_int_str (second, val))
+        error ("invalid second argument '%s' to 'flippable'", second);
+      if (second && val != 0 && val != 1)
+        error ("invalid result argument '%d' to 'flippable", val);
+      if (second)
+        c = new FlippableCall (lit, val);
+      else
+        c = new FlippableCall (lit);
     } else if (!strcmp (keyword, "fixed")) {
       if (!first)
         error ("first argument to 'fixed' missing");
@@ -2707,8 +3410,12 @@ void Reader::parse () {
         error ("'%s' after 'add %d' without 'add 0'", c->keyword (),
                adding);
 
-      if (constraining && c->type != Call::CONSTRAIN &&
-          c->type != Call::RESET)
+      if (lemma_adding && c->type != Call::LEMMA && c->type != Call::RESET)
+        error ("'%s' after 'lemma %d' without 'lemma 0'", c->keyword (),
+               lemma_adding);
+
+      if (constraining && c->type != Call::FIXED &&
+          c->type != Call::CONSTRAIN && c->type != Call::RESET)
         error ("'%s' after 'constrain %d' without 'constrain 0'",
                c->keyword (), constraining);
 
@@ -2737,12 +3444,15 @@ void Reader::parse () {
 
       case Call::ADD:
       case Call::ASSUME:
+      case Call::OBSERVE:
         if (state != Call::BEFORE)
           before_trigger = c;
         new_state = Call::BEFORE;
         break;
 
       case Call::VAL:
+      case Call::FLIP:
+      case Call::FLIPPABLE:
       case Call::FAILED:
         if (!solved && (state == Call::CONFIG || state == Call::BEFORE))
           error ("'%s' can only be called after 'solve'", c->keyword ());
@@ -2754,6 +3464,8 @@ void Reader::parse () {
         }
         assert (state == Call::SOLVE || state == Call::SIMPLIFY ||
                 state == Call::LOOKAHEAD || state == Call::CUBING ||
+                state == Call::OBSERVE || state == Call::LEMMA ||
+                // state == Call::CONTINUE ||
                 state == Call::AFTER);
         new_state = Call::AFTER;
         break;
@@ -2763,6 +3475,10 @@ void Reader::parse () {
       case Call::LOOKAHEAD:
       case Call::CUBING:
       case Call::RESET:
+      case Call::CONNECT:
+      case Call::LEMMA:
+      // case Call::CONTINUE:
+      case Call::DISCONNECT:
         new_state = c->type;
         break;
 
@@ -2843,15 +3559,16 @@ Mobical::Mobical ()
       add_set_log_to_true (false),
 #endif
       add_dump_before_solve (false), add_stats_after_solve (false),
-      shrinking (false), running (false), time_limit (DEFAULT_TIME_LIMIT),
-      space_limit (DEFAULT_SPACE_LIMIT), terminal (terr),
+      add_plain_after_options (false), shrinking (false), running (false),
+      time_limit (DEFAULT_TIME_LIMIT), space_limit (DEFAULT_SPACE_LIMIT),
+      terminal (terr),
 #ifndef QUIET
       progress_counter (0), last_progress_time (0),
 #endif
       traces (0), spurious (0) {
   const int prot = PROT_READ | PROT_WRITE;
   const int flags = MAP_ANONYMOUS | MAP_SHARED;
-  shared = (Shared *) mmap (0, sizeof *shared, prot, flags, 0, 0);
+  shared = (Shared *) mmap (0, sizeof *shared, prot, flags, -1, 0);
 }
 
 Mobical::~Mobical () {
@@ -2959,6 +3676,8 @@ int Mobical::main (int argc, char **argv) {
       add_dump_before_solve = true;
     } else if (!strcmp (argv[i], "-s") || !strcmp (argv[i], "--stats")) {
       add_stats_after_solve = true;
+    } else if (!strcmp (argv[i], "-p") || !strcmp (argv[i], "--plain")) {
+      add_plain_after_options = true;
     } else if (!strcmp (argv[i], "-L")) {
       if (limit >= 0)
         die ("multiple '-L' options (try '-h')");
@@ -3117,6 +3836,10 @@ int Mobical::main (int argc, char **argv) {
   else
     cerr << "explicitly using no space limit";
   cerr << endl << flush;
+
+  prefix ();
+  if (mobical.add_plain_after_options)
+    cerr << "generating only plain instances (--plain)" << endl << flush;
 
   /*----------------------------------------------------------------------*/
 

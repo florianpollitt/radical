@@ -575,7 +575,6 @@ void Internal::failed_literal (int failed) {
   }
   work.clear ();
   erase_vector (work);
-  // clean_probehbr_lrat (); done later...
 
   STOP (analyze);
 
