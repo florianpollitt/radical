@@ -15,7 +15,6 @@ struct NameVal {
 
 static NameVal default_config[1];   // With '-pedantic' just '[]' or
 static NameVal plain_config[1];     // '[0]' gave a warning.
-static NameVal lratplain_config[1]; // '[0]' gave a warning.
 
 /*------------------------------------------------------------------------*/
 
@@ -38,7 +37,6 @@ static NameVal unsat_config[] = {
                                                                                \
   CONFIG(default, "set default advanced internal options")                     \
   CONFIG(plain, "disable all internal preprocessing options")                  \
-  CONFIG(lratplain, "disable all options that do not yet support lrat")        \
   CONFIG(sat, "set internal options to target satisfiable instances")          \
   CONFIG(unsat, "set internal options to target unsatisfiable instances")
 
