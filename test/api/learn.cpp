@@ -11,20 +11,27 @@ extern "C" {
 }
 
 class Wrapper : CaDiCaL::Learner {
-  CaDiCaL::Solver * solver;
+  CaDiCaL::Solver *solver;
   std::vector<int> clause;
+
 public:
   unsigned clauses;
-  Wrapper (CaDiCaL::Solver * s) : solver (s), clauses (0) { solver->connect_learner (this); }
+  Wrapper (CaDiCaL::Solver *s) : solver (s), clauses (0) {
+    solver->connect_learner (this);
+  }
   ~Wrapper () { solver->disconnect_learner (); }
-  bool learning (int size) { (void) size; return true; }
+  bool learning (int size) {
+    (void) size;
+    return true;
+  }
   void learn (int lit) {
-    if (lit) clause.push_back (lit);
+    if (lit)
+      clause.push_back (lit);
     else {
-      std::cout << "solver[" << ((void*) solver) << "] imported clause of size "
-                << clause.size () << ':';
+      std::cout << "solver[" << ((void *) solver)
+                << "] imported clause of size " << clause.size () << ':';
       for (auto lit : clause)
-	std::cout << ' ' << lit;
+        std::cout << ' ' << lit;
       std::cout << std::endl << std::flush;
       clause.clear ();
       clauses++;
@@ -32,17 +39,18 @@ public:
   }
 };
 
-static void formula (CaDiCaL::Solver & solver) {
+static void formula (CaDiCaL::Solver &solver) {
   for (int r = -1; r < 2; r += 2)
     for (int s = -1; s < 2; s += 2)
       for (int t = -1; t < 2; t += 2)
-	solver.add (r * 1), solver.add (s * 2), solver.add (t * 3),
-	solver.add (0);
+        solver.add (r * 1), solver.add (s * 2), solver.add (t * 3),
+            solver.add (0);
 }
 
 int main () {
   CaDiCaL::Solver ping, pong;
   ping.set ("log", 1), pong.set ("log", 1);
+  ping.set ("otfs", 0), pong.set ("otfs", 0);
   Wrapper wing (&ping), wong (&pong);
   formula (ping), formula (pong);
   int a = ping.solve ();
