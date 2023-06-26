@@ -33,7 +33,7 @@ struct Coveror {
     size_t added, covered;
   } next; // propagate next ...
 
-  Coveror() : alas(0), clas(0) {}
+  Coveror () : alas (0), clas (0) {}
 };
 
 /*------------------------------------------------------------------------*/
@@ -46,31 +46,31 @@ struct Coveror {
 // even though all 'added' clauses correspond to the extended clause, we
 // only need to save the original and added covered literals.
 
-inline void Internal::cover_push_extension(int lit, Coveror &coveror) {
-  coveror.extend.push_back(0);
-  coveror.extend.push_back(lit); // blocking literal comes first
+inline void Internal::cover_push_extension (int lit, Coveror &coveror) {
+  coveror.extend.push_back (0);
+  coveror.extend.push_back (lit); // blocking literal comes first
   bool found = false;
   for (const auto &other : coveror.covered)
     if (lit == other)
-      assert(!found), found = true;
+      assert (!found), found = true;
     else
-      coveror.extend.push_back(other);
-  assert(found);
-  (void)found;
+      coveror.extend.push_back (other);
+  assert (found);
+  (void) found;
 }
 
 // Successful covered literal addition (CLA) step.
 
-inline void Internal::covered_literal_addition(int lit, Coveror &coveror) {
-  require_mode(COVER);
-  assert(level == 1);
-  cover_push_extension(lit, coveror);
+inline void Internal::covered_literal_addition (int lit, Coveror &coveror) {
+  require_mode (COVER);
+  assert (level == 1);
+  cover_push_extension (lit, coveror);
   for (const auto &other : coveror.intersection) {
-    LOG("covered literal addition %d", other);
-    assert(!vals[other]), assert(!vals[-other]);
+    LOG ("covered literal addition %d", other);
+    assert (!vals[other]), assert (!vals[-other]);
     vals[other] = -1, vals[-other] = 1;
-    coveror.covered.push_back(other);
-    coveror.added.push_back(other);
+    coveror.covered.push_back (other);
+    coveror.added.push_back (other);
     coveror.clas++;
   }
   coveror.next.covered = 0;
@@ -78,13 +78,14 @@ inline void Internal::covered_literal_addition(int lit, Coveror &coveror) {
 
 // Successful asymmetric literal addition (ALA) step.
 
-inline void Internal::asymmetric_literal_addition(int lit, Coveror &coveror) {
-  require_mode(COVER);
-  assert(level == 1);
-  LOG("initial asymmetric literal addition %d", lit);
-  assert(!vals[lit]), assert(!vals[-lit]);
+inline void Internal::asymmetric_literal_addition (int lit,
+                                                   Coveror &coveror) {
+  require_mode (COVER);
+  assert (level == 1);
+  LOG ("initial asymmetric literal addition %d", lit);
+  assert (!vals[lit]), assert (!vals[-lit]);
   vals[lit] = -1, vals[-lit] = 1;
-  coveror.added.push_back(lit);
+  coveror.added.push_back (lit);
   coveror.alas++;
   coveror.next.covered = 0;
 }
@@ -96,37 +97,37 @@ inline void Internal::asymmetric_literal_addition(int lit, Coveror &coveror) {
 // same spirit as 'probe_propagate' and 'vivify_propagate'.  Please refer to
 // the detailed comments for 'propagate' in 'propagate.cpp' for details.
 
-bool Internal::cover_propagate_asymmetric(int lit, Clause *ignore,
-                                          Coveror &coveror) {
-  require_mode(COVER);
+bool Internal::cover_propagate_asymmetric (int lit, Clause *ignore,
+                                           Coveror &coveror) {
+  require_mode (COVER);
   stats.propagations.cover++;
-  assert(val(lit) < 0);
+  assert (val (lit) < 0);
   bool subsumed = false;
-  LOG("asymmetric literal propagation of %d", lit);
-  Watches &ws = watches(lit);
-  const const_watch_iterator eow = ws.end();
-  watch_iterator j = ws.begin();
+  LOG ("asymmetric literal propagation of %d", lit);
+  Watches &ws = watches (lit);
+  const const_watch_iterator eow = ws.end ();
+  watch_iterator j = ws.begin ();
   const_watch_iterator i = j;
   while (!subsumed && i != eow) {
     const Watch w = *j++ = *i++;
     if (w.clause == ignore)
       continue; // costly but necessary here ...
-    const signed char b = val(w.blit);
+    const signed char b = val (w.blit);
     if (b > 0)
       continue;
     if (w.clause->garbage)
       j--;
-    else if (w.binary()) {
+    else if (w.binary ()) {
       if (b < 0) {
-        LOG(w.clause, "found subsuming");
+        LOG (w.clause, "found subsuming");
         subsumed = true;
       } else
-        asymmetric_literal_addition(-w.blit, coveror);
+        asymmetric_literal_addition (-w.blit, coveror);
     } else {
-      literal_iterator lits = w.clause->begin();
+      literal_iterator lits = w.clause->begin ();
       const int other = lits[0] ^ lits[1] ^ lit;
       lits[0] = other, lits[1] = lit;
-      const signed char u = val(other);
+      const signed char u = val (other);
       if (u > 0)
         j[-1].blit = other;
       else {
@@ -136,30 +137,30 @@ bool Internal::cover_propagate_asymmetric(int lit, Clause *ignore,
         literal_iterator k = middle;
         signed char v = -1;
         int r = 0;
-        while (k != end && (v = val(r = *k)) < 0)
+        while (k != end && (v = val (r = *k)) < 0)
           k++;
         if (v < 0) {
           k = lits + 2;
-          assert(w.clause->pos <= size);
-          while (k != middle && (v = val(r = *k)) < 0)
+          assert (w.clause->pos <= size);
+          while (k != middle && (v = val (r = *k)) < 0)
             k++;
         }
         w.clause->pos = k - lits;
-        assert(lits + 2 <= k), assert(k <= w.clause->end());
+        assert (lits + 2 <= k), assert (k <= w.clause->end ());
         if (v > 0)
           j[-1].blit = r;
         else if (!v) {
-          LOG(w.clause, "unwatch %d in", lit);
+          LOG (w.clause, "unwatch %d in", lit);
           lits[1] = r;
           *k = lit;
-          watch_literal(r, lit, w.clause);
+          watch_literal (r, lit, w.clause);
           j--;
         } else if (!u) {
-          assert(v < 0);
-          asymmetric_literal_addition(-other, coveror);
+          assert (v < 0);
+          asymmetric_literal_addition (-other, coveror);
         } else {
-          assert(u < 0), assert(v < 0);
-          LOG(w.clause, "found subsuming");
+          assert (u < 0), assert (v < 0);
+          LOG (w.clause, "found subsuming");
           subsumed = true;
           break;
         }
@@ -169,7 +170,7 @@ bool Internal::cover_propagate_asymmetric(int lit, Clause *ignore,
   if (j != i) {
     while (i != eow)
       *j++ = *i++;
-    ws.resize(j - ws.begin());
+    ws.resize (j - ws.begin ());
   }
   return subsumed;
 }
@@ -177,22 +178,22 @@ bool Internal::cover_propagate_asymmetric(int lit, Clause *ignore,
 // Covered literal addition (which needs full occurrence lists).  The
 // function returns 'true' if the extended clause is blocked on 'lit.'
 
-bool Internal::cover_propagate_covered(int lit, Coveror &coveror) {
-  require_mode(COVER);
+bool Internal::cover_propagate_covered (int lit, Coveror &coveror) {
+  require_mode (COVER);
 
-  assert(val(lit) < 0);
-  if (frozen(lit)) {
-    LOG("no covered propagation on frozen literal %d", lit);
+  assert (val (lit) < 0);
+  if (frozen (lit)) {
+    LOG ("no covered propagation on frozen literal %d", lit);
     return false;
   }
 
   stats.propagations.cover++;
 
-  LOG("covered propagation of %d", lit);
-  assert(coveror.intersection.empty());
+  LOG ("covered propagation of %d", lit);
+  assert (coveror.intersection.empty ());
 
-  Occs &os = occs(-lit);
-  const auto end = os.end();
+  Occs &os = occs (-lit);
+  const auto end = os.end ();
   bool first = true;
 
   // Compute the intersection of the literals in all the clauses with
@@ -201,7 +202,7 @@ bool Internal::cover_propagate_covered(int lit, Coveror &coveror) {
   // intersection can be added as covered literal. As soon the intersection
   // becomes empty (during traversal of clauses with '-lit') we abort.
 
-  for (auto i = os.begin(); i != end; i++) {
+  for (auto i = os.begin (); i != end; i++) {
 
     Clause *c = *i;
     if (c->garbage)
@@ -213,7 +214,7 @@ bool Internal::cover_propagate_covered(int lit, Coveror &coveror) {
     for (const auto &other : *c) {
       if (other == -lit)
         continue;
-      const signed char tmp = val(other);
+      const signed char tmp = val (other);
       if (tmp < 0)
         continue;
       if (tmp > 0) {
@@ -222,7 +223,7 @@ bool Internal::cover_propagate_covered(int lit, Coveror &coveror) {
       }
     }
     if (blocked) { // ... if 'c' is double satisfied.
-      LOG(c, "blocked");
+      LOG (c, "blocked");
       continue; // with next clause with '-lit'.
     }
 
@@ -233,12 +234,12 @@ bool Internal::cover_propagate_covered(int lit, Coveror &coveror) {
       for (const auto &other : *c) {
         if (other == -lit)
           continue;
-        const signed char tmp = val(other);
+        const signed char tmp = val (other);
         if (tmp < 0)
           continue;
-        assert(!tmp);
-        coveror.intersection.push_back(other);
-        mark(other);
+        assert (!tmp);
+        coveror.intersection.push_back (other);
+        mark (other);
       }
 
       first = false;
@@ -250,39 +251,39 @@ bool Internal::cover_propagate_covered(int lit, Coveror &coveror) {
       for (const auto &other : *c) {
         if (other == -lit)
           continue;
-        signed char tmp = val(other);
+        signed char tmp = val (other);
         if (tmp < 0)
           continue;
-        assert(!tmp);
-        tmp = marked(other);
+        assert (!tmp);
+        tmp = marked (other);
         if (tmp > 0)
-          unmark(other);
+          unmark (other);
       }
 
       // Then remove from intersection all marked literals.
 
-      const auto end = coveror.intersection.end();
-      auto j = coveror.intersection.begin();
+      const auto end = coveror.intersection.end ();
+      auto j = coveror.intersection.begin ();
       for (auto k = j; k != end; k++) {
         const int other = *j++ = *k;
-        const int tmp = marked(other);
-        assert(tmp >= 0);
+        const int tmp = marked (other);
+        assert (tmp >= 0);
         if (tmp)
-          j--, unmark(other); // remove marked and unmark it
+          j--, unmark (other); // remove marked and unmark it
         else
-          mark(other); // keep unmarked and mark it
+          mark (other); // keep unmarked and mark it
       }
-      const size_t new_size = j - coveror.intersection.begin();
-      coveror.intersection.resize(new_size);
+      const size_t new_size = j - coveror.intersection.begin ();
+      coveror.intersection.resize (new_size);
 
-      if (!coveror.intersection.empty())
+      if (!coveror.intersection.empty ())
         continue;
 
       // No covered literal addition candidates in the intersection left!
       // Move this clause triggering early abort to the beginning.
       // This is a common move to front strategy to minimize effort.
 
-      auto begin = os.begin();
+      auto begin = os.begin ();
       while (i != begin) {
         auto prev = i - 1;
         *i = *prev;
@@ -296,58 +297,58 @@ bool Internal::cover_propagate_covered(int lit, Coveror &coveror) {
 
   bool res = false;
   if (first) {
-    LOG("all resolution candidates with %d blocked", -lit);
-    assert(coveror.intersection.empty());
-    cover_push_extension(lit, coveror);
+    LOG ("all resolution candidates with %d blocked", -lit);
+    assert (coveror.intersection.empty ());
+    cover_push_extension (lit, coveror);
     res = true;
-  } else if (coveror.intersection.empty()) {
-    LOG("empty intersection of resolution candidate literals");
+  } else if (coveror.intersection.empty ()) {
+    LOG ("empty intersection of resolution candidate literals");
   } else {
-    LOG(coveror.intersection,
-        "non-empty intersection of resolution candidate literals");
-    covered_literal_addition(lit, coveror);
-    unmark(coveror.intersection);
-    coveror.intersection.clear();
+    LOG (coveror.intersection,
+         "non-empty intersection of resolution candidate literals");
+    covered_literal_addition (lit, coveror);
+    unmark (coveror.intersection);
+    coveror.intersection.clear ();
     coveror.next.covered = 0; // Restart covering.
   }
 
-  unmark(coveror.intersection);
-  coveror.intersection.clear();
+  unmark (coveror.intersection);
+  coveror.intersection.clear ();
 
   return res;
 }
 
 /*------------------------------------------------------------------------*/
 
-bool Internal::cover_clause(Clause *c, Coveror &coveror) {
+bool Internal::cover_clause (Clause *c, Coveror &coveror) {
 
-  require_mode(COVER);
-  assert(!c->garbage);
+  require_mode (COVER);
+  assert (!c->garbage);
 
-  LOG(c, "trying covered clauses elimination on");
+  LOG (c, "trying covered clauses elimination on");
   bool satisfied = false;
   for (const auto &lit : *c)
-    if (val(lit) > 0)
+    if (val (lit) > 0)
       satisfied = true;
 
   if (satisfied) {
-    LOG(c, "clause already satisfied");
-    mark_garbage(c);
+    LOG (c, "clause already satisfied");
+    mark_garbage (c);
     return false;
   }
 
-  assert(coveror.added.empty());
-  assert(coveror.extend.empty());
-  assert(coveror.covered.empty());
+  assert (coveror.added.empty ());
+  assert (coveror.extend.empty ());
+  assert (coveror.covered.empty ());
 
-  assert(!level);
+  assert (!level);
   level = 1;
-  LOG("assuming literals of candidate clause");
+  LOG ("assuming literals of candidate clause");
   for (const auto &lit : *c) {
-    if (val(lit))
+    if (val (lit))
       continue;
-    asymmetric_literal_addition(lit, coveror);
-    coveror.covered.push_back(lit);
+    asymmetric_literal_addition (lit, coveror);
+    coveror.covered.push_back (lit);
   }
 
   bool tautological = false;
@@ -355,37 +356,37 @@ bool Internal::cover_clause(Clause *c, Coveror &coveror) {
   coveror.next.added = coveror.next.covered = 0;
 
   while (!tautological) {
-    if (coveror.next.added < coveror.added.size()) {
+    if (coveror.next.added < coveror.added.size ()) {
       const int lit = coveror.added[coveror.next.added++];
-      tautological = cover_propagate_asymmetric(lit, c, coveror);
-    } else if (coveror.next.covered < coveror.covered.size()) {
+      tautological = cover_propagate_asymmetric (lit, c, coveror);
+    } else if (coveror.next.covered < coveror.covered.size ()) {
       const int lit = coveror.covered[coveror.next.covered++];
-      tautological = cover_propagate_covered(lit, coveror);
+      tautological = cover_propagate_covered (lit, coveror);
     } else
       break;
   }
 
   if (tautological) {
-    if (coveror.extend.empty()) {
+    if (coveror.extend.empty ()) {
       stats.cover.asymmetric++;
       stats.cover.total++;
-      LOG(c, "asymmetric tautological");
-      mark_garbage(c);
+      LOG (c, "asymmetric tautological");
+      mark_garbage (c);
     } else {
       stats.cover.blocked++;
       stats.cover.total++;
-      LOG(c, "covered tautological");
-      mark_garbage(c);
+      LOG (c, "covered tautological");
+      mark_garbage (c);
       // Only copy extension stack if successful.
       int prev = INT_MIN;
       for (const auto &other : coveror.extend) {
         if (!prev) {
-          external->push_zero_on_extension_stack();
-          external->push_witness_literal_on_extension_stack(other);
-          external->push_zero_on_extension_stack();
+          external->push_zero_on_extension_stack ();
+          external->push_witness_literal_on_extension_stack (other);
+          external->push_zero_on_extension_stack ();
         }
         if (other)
-          external->push_clause_literal_on_extension_stack(other);
+          external->push_clause_literal_on_extension_stack (other);
         prev = other;
       }
     }
@@ -393,14 +394,14 @@ bool Internal::cover_clause(Clause *c, Coveror &coveror) {
 
   // Backtrack and 'unassign' all literals.
 
-  assert(level == 1);
+  assert (level == 1);
   for (const auto &lit : coveror.added)
     vals[lit] = vals[-lit] = 0;
   level = 0;
 
-  coveror.covered.clear();
-  coveror.extend.clear();
-  coveror.added.clear();
+  coveror.covered.clear ();
+  coveror.extend.clear ();
+  coveror.added.clear ();
 
   return tautological;
 }
@@ -410,7 +411,7 @@ bool Internal::cover_clause(Clause *c, Coveror &coveror) {
 // Not yet tried and larger clauses are tried first.
 
 struct clause_covered_or_smaller {
-  bool operator()(const Clause *a, const Clause *b) {
+  bool operator() (const Clause *a, const Clause *b) {
     if (a->covered && !b->covered)
       return true;
     if (!a->covered && b->covered)
@@ -419,13 +420,13 @@ struct clause_covered_or_smaller {
   }
 };
 
-int64_t Internal::cover_round() {
+int64_t Internal::cover_round () {
 
   if (unsat)
     return 0;
 
-  init_watches();
-  connect_watches(true); // irredundant watches only is enough
+  init_watches ();
+  connect_watches (true); // irredundant watches only is enough
 
   int64_t delta = stats.propagations.search;
   delta *= 1e-3 * opts.coverreleff;
@@ -433,37 +434,40 @@ int64_t Internal::cover_round() {
     delta = opts.covermineff;
   if (delta > opts.covermaxeff)
     delta = opts.covermaxeff;
-  delta = max(delta, ((int64_t)2) * active());
+  delta = max (delta, ((int64_t) 2) * active ());
 
-  PHASE("cover", stats.cover.count,
-        "covered clause elimination limit of %" PRId64 " propagations", delta);
+  PHASE ("cover", stats.cover.count,
+         "covered clause elimination limit of %" PRId64 " propagations",
+         delta);
 
   int64_t limit = stats.propagations.cover + delta;
 
-  init_occs();
+  init_occs ();
 
   vector<Clause *> schedule;
   Coveror coveror;
 
   // First connect all clauses and find all not yet tried clauses.
   //
+#ifndef QUIET
   int64_t untried = 0;
+#endif
   //
   for (auto c : clauses) {
-    assert(!c->frozen);
+    assert (!c->frozen);
     if (c->garbage)
       continue;
     if (c->redundant)
       continue;
     bool satisfied = false, allfrozen = true;
     for (const auto &lit : *c)
-      if (val(lit) > 0) {
+      if (val (lit) > 0) {
         satisfied = true;
         break;
-      } else if (allfrozen && !frozen(lit))
+      } else if (allfrozen && !frozen (lit))
         allfrozen = false;
     if (satisfied) {
-      mark_garbage(c);
+      mark_garbage (c);
       continue;
     }
     if (allfrozen) {
@@ -471,20 +475,22 @@ int64_t Internal::cover_round() {
       continue;
     }
     for (const auto &lit : *c)
-      occs(lit).push_back(c);
+      occs (lit).push_back (c);
     if (c->size < opts.coverminclslim)
       continue;
     if (c->size > opts.covermaxclslim)
       continue;
     if (c->covered)
       continue;
-    schedule.push_back(c);
+    schedule.push_back (c);
+#ifndef QUIET
     untried++;
+#endif
   }
 
-  if (schedule.empty()) {
+  if (schedule.empty ()) {
 
-    PHASE("cover", stats.cover.count, "no previously untried clause left");
+    PHASE ("cover", stats.cover.count, "no previously untried clause left");
 
     for (auto c : clauses) {
       if (c->garbage)
@@ -499,9 +505,9 @@ int64_t Internal::cover_round() {
         continue;
       if (c->size > opts.covermaxclslim)
         continue;
-      assert(c->covered);
+      assert (c->covered);
       c->covered = false;
-      schedule.push_back(c);
+      schedule.push_back (c);
     }
   } else { // Mix of tried and not tried clauses ....
 
@@ -520,18 +526,19 @@ int64_t Internal::cover_round() {
         continue;
       if (!c->covered)
         continue;
-      schedule.push_back(c);
+      schedule.push_back (c);
     }
   }
 
-  stable_sort(schedule.begin(), schedule.end(), clause_covered_or_smaller());
+  stable_sort (schedule.begin (), schedule.end (),
+               clause_covered_or_smaller ());
 
 #ifndef QUIET
-  const size_t scheduled = schedule.size();
-  PHASE("cover", stats.cover.count,
-        "scheduled %zd clauses %.0f%% with %" PRId64 " untried %.0f%%",
-        scheduled, percent(scheduled, stats.current.irredundant), untried,
-        percent(untried, scheduled));
+  const size_t scheduled = schedule.size ();
+  PHASE ("cover", stats.cover.count,
+         "scheduled %zd clauses %.0f%% with %" PRId64 " untried %.0f%%",
+         scheduled, percent (scheduled, stats.current.irredundant), untried,
+         percent (untried, scheduled));
 #endif
 
   // Heuristically it should be beneficial to intersect with smaller clauses
@@ -539,52 +546,53 @@ int64_t Internal::cover_round() {
   // resolution candidates becomes emptier earlier.
 
   for (auto lit : lits) {
-    if (!active(lit))
+    if (!active (lit))
       continue;
-    Occs &os = occs(lit);
-    stable_sort(os.begin(), os.end(), clause_smaller_size());
+    Occs &os = occs (lit);
+    stable_sort (os.begin (), os.end (), clause_smaller_size ());
   }
 
   // This is the main loop of trying to do CCE of candidate clauses.
   //
   int64_t covered = 0;
   //
-  while (!terminated_asynchronously() && !schedule.empty() &&
+  while (!terminated_asynchronously () && !schedule.empty () &&
          stats.propagations.cover < limit) {
-    Clause *c = schedule.back();
-    schedule.pop_back();
+    Clause *c = schedule.back ();
+    schedule.pop_back ();
     c->covered = true;
-    if (cover_clause(c, coveror))
+    if (cover_clause (c, coveror))
       covered++;
   }
 
 #ifndef QUIET
-  const size_t remain = schedule.size();
+  const size_t remain = schedule.size ();
   const size_t tried = scheduled - remain;
-  PHASE("cover", stats.cover.count,
-        "eliminated %" PRId64 " covered clauses out of %zd tried %.0f%%",
-        covered, tried, percent(covered, tried));
+  PHASE ("cover", stats.cover.count,
+         "eliminated %" PRId64 " covered clauses out of %zd tried %.0f%%",
+         covered, tried, percent (covered, tried));
   if (remain)
-    PHASE("cover", stats.cover.count, "remaining %zu clauses %.0f%% untried",
-          remain, percent(remain, scheduled));
+    PHASE ("cover", stats.cover.count,
+           "remaining %zu clauses %.0f%% untried", remain,
+           percent (remain, scheduled));
   else
-    PHASE("cover", stats.cover.count, "all scheduled clauses tried");
+    PHASE ("cover", stats.cover.count, "all scheduled clauses tried");
 #endif
-  reset_occs();
-  reset_watches();
+  reset_occs ();
+  reset_watches ();
 
   return covered;
 }
 
 /*------------------------------------------------------------------------*/
 
-bool Internal::cover() {
+bool Internal::cover () {
 
   if (!opts.cover)
     return false;
   if (unsat)
     return false;
-  if (terminated_asynchronously())
+  if (terminated_asynchronously ())
     return false;
   if (!stats.current.irredundant)
     return false;
@@ -603,7 +611,7 @@ bool Internal::cover() {
   if (opts.restoreflush)
     return false;
 
-  START_SIMPLIFIER(cover, COVER);
+  START_SIMPLIFIER (cover, COVER);
 
   stats.cover.count++;
 
@@ -614,24 +622,25 @@ bool Internal::cover() {
   // Since we want to interleave CCE with it, we have to propagate here.
   // Otherwise this triggers inconsistencies.
   //
-  if (propagated < trail.size()) {
-    init_watches();
-    connect_watches(); // need to propagated over all clauses!
-    LOG("elimination produced %zd units", (size_t)(trail.size() - propagated));
-    if (!propagate()) {
-      LOG("propagating units before covered clause elimination "
-          "results in empty clause");
-      learn_empty_clause();
-      assert(unsat);
+  if (propagated < trail.size ()) {
+    init_watches ();
+    connect_watches (); // need to propagated over all clauses!
+    LOG ("elimination produced %zd units",
+         (size_t) (trail.size () - propagated));
+    if (!propagate ()) {
+      LOG ("propagating units before covered clause elimination "
+           "results in empty clause");
+      learn_empty_clause ();
+      assert (unsat);
     }
-    reset_watches();
+    reset_watches ();
   }
-  assert(unsat || propagated == trail.size());
+  assert (unsat || propagated == trail.size ());
 
-  int64_t covered = cover_round();
+  int64_t covered = cover_round ();
 
-  STOP_SIMPLIFIER(cover, COVER);
-  report('c', !opts.reportall && !covered);
+  STOP_SIMPLIFIER (cover, COVER);
+  report ('c', !opts.reportall && !covered);
 
   return covered;
 }

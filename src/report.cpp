@@ -68,38 +68,38 @@ struct Report {
   char buffer[20];
   int pos;
 
-  Report(const char *h, int precision, int min, double value);
-  Report() {}
+  Report (const char *h, int precision, int min, double value);
+  Report () {}
 
-  void print_header(char *line);
+  void print_header (char *line);
 };
 
 /*------------------------------------------------------------------------*/
 
-void Report::print_header(char *line) {
-  int len = strlen(header);
+void Report::print_header (char *line) {
+  int len = strlen (header);
   for (int i = -1, j = pos - (len + 1) / 2 - 3; i < len; i++, j++)
     line[j] = i < 0 ? ' ' : header[i];
 }
 
-Report::Report(const char *h, int precision, int min, double value)
-    : header(h) {
+Report::Report (const char *h, int precision, int min, double value)
+    : header (h) {
   char fmt[32];
   if (precision < 0)
-    sprintf(fmt, "%%.%df", -precision - 1);
+    sprintf (fmt, "%%.%df", -precision - 1);
   else
-    sprintf(fmt, "%%.%df", precision);
-  sprintf(buffer, fmt, value);
-  const int width = strlen(buffer);
+    sprintf (fmt, "%%.%df", precision);
+  sprintf (buffer, fmt, value);
+  const int width = strlen (buffer);
   if (precision < 0)
-    strcat(buffer, "%");
+    strcat (buffer, "%");
   if (width >= min)
     return;
   if (precision < 0)
-    sprintf(fmt, "%%%d.%df%%%%", min, -precision - 1);
+    sprintf (fmt, "%%%d.%df%%%%", min, -precision - 1);
   else
-    sprintf(fmt, "%%%d.%df", min, precision);
-  sprintf(buffer, fmt, value);
+    sprintf (fmt, "%%%d.%df", min, precision);
+  sprintf (buffer, fmt, value);
 }
 
 /*------------------------------------------------------------------------*/
@@ -110,32 +110,32 @@ Report::Report(const char *h, int precision, int min, double value)
 // prefix 'i'.  To add another statistics column, add a corresponding line
 // here.  If you want to report something else add 'report (..)' functions.
 
-#define TIME opts.reportsolve ? solve_time() : time()
+#define TIME opts.reportsolve ? solve_time () : time ()
 
-#define MB (current_resident_set_size() / (double)(1l << 20))
+#define MB (current_resident_set_size () / (double) (1l << 20))
 
-#define REMAINING (percent(active(), external->max_var))
+#define REMAINING (percent (active (), external->max_var))
 
-#define TRAIL (percent(averages.current.trail.slow, max_var))
+#define TRAIL (percent (averages.current.trail.slow, max_var))
 
-#define TARGET (percent(target_assigned, max_var))
+#define TARGET (percent (target_assigned, max_var))
 
-#define BEST (percent(best_assigned, max_var))
+#define BEST (percent (best_assigned, max_var))
 
-#define REPORTS                                                                \
-  /*     HEADER, PRECISION, MIN, VALUE */                                      \
-  REPORT("seconds", 2, 5, TIME)                                                \
-  REPORT("MB", 0, 2, MB)                                                       \
-  REPORT("level", 0, 2, averages.current.level)                                \
-  REPORT("reductions", 0, 1, stats.reductions)                                 \
-  REPORT("restarts", 0, 3, stats.restarts)                                     \
-  REPORT("conflicts", 0, 4, stats.conflicts)                                   \
-  REPORT("redundant", 0, 4, stats.current.redundant)                           \
-  REPORT("trail", -1, 2, TRAIL)                                                \
-  REPORT("glue", 0, 1, averages.current.glue.slow)                             \
-  REPORT("irredundant", 0, 4, stats.current.irredundant)                       \
-  REPORT("variables", 0, 3, active())                                          \
-  REPORT("remaining", -1, 2, REMAINING)
+#define REPORTS \
+  /*     HEADER, PRECISION, MIN, VALUE */ \
+  REPORT ("seconds", 2, 5, TIME) \
+  REPORT ("MB", 0, 2, MB) \
+  REPORT ("level", 0, 2, averages.current.level) \
+  REPORT ("reductions", 0, 1, stats.reductions) \
+  REPORT ("restarts", 0, 3, stats.restarts) \
+  REPORT ("conflicts", 0, 4, stats.conflicts) \
+  REPORT ("redundant", 0, 4, stats.current.redundant) \
+  REPORT ("trail", -1, 2, TRAIL) \
+  REPORT ("glue", 0, 1, averages.current.glue.slow) \
+  REPORT ("irredundant", 0, 4, stats.current.irredundant) \
+  REPORT ("variables", 0, 3, active ()) \
+  REPORT ("remaining", -1, 2, REMAINING)
 
 // Note, keep an empty line before this line (because of '\')!
 
@@ -155,7 +155,7 @@ static const int num_reports = // as compile time constant
 
 /*------------------------------------------------------------------------*/
 
-void Internal::report(char type, int verbose) {
+void Internal::report (char type, int verbose) {
   if (!opts.report)
     return;
 #ifdef LOGGING
@@ -164,26 +164,26 @@ void Internal::report(char type, int verbose) {
     if (opts.quiet || (verbose > opts.verbose))
       return;
   if (!reported) {
-    assert(!lim.report);
+    assert (!lim.report);
     reported = true;
-    MSG("%stime measured in %s time %s%s", tout.magenta_code(),
-        internal->opts.realtime ? "real" : "process",
-        internal->opts.reportsolve ? "in solving" : "since initialization",
-        tout.normal_code());
+    MSG ("%stime measured in %s time %s%s", tout.magenta_code (),
+         internal->opts.realtime ? "real" : "process",
+         internal->opts.reportsolve ? "in solving" : "since initialization",
+         tout.normal_code ());
   }
   Report reports[num_reports];
   int n = 0;
-#define REPORT(HEAD, PREC, MIN, EXPR)                                          \
-  assert(n < num_reports);                                                     \
-  reports[n++] = Report(HEAD, PREC, MIN, (double)(EXPR));
+#define REPORT(HEAD, PREC, MIN, EXPR) \
+  assert (n < num_reports); \
+  reports[n++] = Report (HEAD, PREC, MIN, (double) (EXPR));
   REPORTS
 #undef REPORT
   if (!lim.report) {
-    print_prefix();
-    fputc('\n', stdout);
+    print_prefix ();
+    fputc ('\n', stdout);
     int pos = 4;
     for (int i = 0; i < n; i++) {
-      int len = strlen(reports[i].buffer);
+      int len = strlen (reports[i].buffer);
       reports[i].pos = pos + (len + 1) / 2;
       pos += len + 1;
     }
@@ -194,27 +194,27 @@ void Internal::report(char type, int verbose) {
       for (i = 0; i < max_line; i++)
         line[i] = ' ';
       for (i = start; i < n; i += nrows)
-        reports[i].print_header(line);
+        reports[i].print_header (line);
       for (i = max_line - 1; line[i - 1] == ' '; i--)
         ;
       line[i] = 0;
-      print_prefix();
-      tout.yellow();
-      fputs(line, stdout);
-      tout.normal();
-      fputc('\n', stdout);
+      print_prefix ();
+      tout.yellow ();
+      fputs (line, stdout);
+      tout.normal ();
+      fputc ('\n', stdout);
     }
-    print_prefix();
-    fputc('\n', stdout);
+    print_prefix ();
+    fputc ('\n', stdout);
     delete[] line;
     lim.report = 19;
   } else
     lim.report--;
-  print_prefix();
+  print_prefix ();
   switch (type) {
   case '[':
   case ']':
-    tout.magenta(true);
+    tout.magenta (true);
     break;
   case 's':
   case 'v':
@@ -222,63 +222,63 @@ void Internal::report(char type, int verbose) {
   case 't':
   case 'b':
   case 'c':
-    tout.green(false);
+    tout.green (false);
     break;
   case 'e':
-    tout.green(true);
+    tout.green (true);
     break;
   case 'p':
   case '2':
   case '3':
-    tout.blue(false);
+    tout.blue (false);
     break;
   case 'd':
-    tout.blue(true);
+    tout.blue (true);
     break;
   case 'z':
   case 'f':
-    tout.cyan(true);
+    tout.cyan (true);
     break;
   case '-':
-    tout.normal();
+    tout.normal ();
     break;
   case '/':
-    tout.yellow(true);
+    tout.yellow (true);
     break;
   case 'a':
   case 'n':
-    tout.red(false);
+    tout.red (false);
     break;
   case '0':
   case '1':
   case '?':
   case 'i':
-    tout.bold();
+    tout.bold ();
     break;
   case 'L':
   case 'P':
-    tout.bold();
-    tout.underline();
+    tout.bold ();
+    tout.underline ();
     break;
   }
-  fputc(type, stdout);
+  fputc (type, stdout);
   if (stable || type == ']')
-    tout.magenta();
+    tout.magenta ();
   else if (type != 'L' && type != 'P')
-    tout.normal();
+    tout.normal ();
   for (int i = 0; i < n; i++) {
-    fputc(' ', stdout);
-    fputs(reports[i].buffer, stdout);
+    fputc (' ', stdout);
+    fputs (reports[i].buffer, stdout);
   }
   if (stable || type == 'L' || type == 'P' || type == ']')
-    tout.normal();
-  fputc('\n', stdout);
-  fflush(stdout);
+    tout.normal ();
+  fputc ('\n', stdout);
+  fflush (stdout);
 }
 
 #else // ifndef QUIET
 
-void Internal::report(char, int) {}
+void Internal::report (char, int) {}
 
 #endif
 

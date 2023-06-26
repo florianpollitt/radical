@@ -15,7 +15,7 @@ struct DFS {
   unsigned idx;   // depth first search index
   unsigned min;   // minimum reachable index
   Clause *parent; // for lrat
-  DFS() : idx(0), min(0), parent(0) {}
+  DFS () : idx (0), min (0), parent (0) {}
 };
 
 } // namespace CaDiCaL

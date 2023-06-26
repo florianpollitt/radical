@@ -19,13 +19,13 @@ struct Level {
     int trail; // smallest trail position seen on this level
   } seen;
 
-  void reset() {
+  void reset () {
     seen.count = 0;
     seen.trail = INT_MAX;
   }
 
-  Level(int d, int t) : decision(d), trail(t) { reset(); }
-  Level() {}
+  Level (int d, int t) : decision (d), trail (t) { reset (); }
+  Level () {}
 };
 
 } // namespace CaDiCaL

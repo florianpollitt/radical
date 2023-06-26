@@ -9,8 +9,8 @@ struct Internal;
 
 struct block_more_occs_size {
   Internal *internal;
-  block_more_occs_size(Internal *i) : internal(i) {}
-  bool operator()(unsigned a, unsigned b);
+  block_more_occs_size (Internal *i) : internal (i) {}
+  bool operator() (unsigned a, unsigned b);
 };
 
 typedef heap<block_more_occs_size> BlockSchedule;
@@ -23,12 +23,12 @@ class Blocker {
   vector<struct Clause *> reschedule;
   BlockSchedule schedule;
 
-  Blocker(Internal *i) : schedule(block_more_occs_size(i)) {}
+  Blocker (Internal *i) : schedule (block_more_occs_size (i)) {}
 
-  void erase() {
-    erase_vector(candidates);
-    erase_vector(reschedule);
-    schedule.erase();
+  void erase () {
+    erase_vector (candidates);
+    erase_vector (reschedule);
+    schedule.erase ();
   }
 };
 

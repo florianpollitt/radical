@@ -11,7 +11,8 @@ namespace CaDiCaL {
 // It requires LRAT-style proof chains for each learned clause that we can
 // currently only build with lratbuilder.
 //
-// Most of the infrastructure is taken from checker, but without the propagation
+// Most of the infrastructure is taken from checker, but without the
+// propagation
 
 /*------------------------------------------------------------------------*/
 
@@ -39,10 +40,10 @@ class LratChecker {
   // The 'watchers' and 'marks' data structures are not that time critical
   // and thus we access them by first mapping a literal to 'unsigned'.
   //
-  static unsigned l2u(int lit);
+  static unsigned l2u (int lit);
 
-  signed char &checked_lit(int lit);
-  signed char &mark(int lit);
+  signed char &checked_lit (int lit);
+  signed char &mark (int lit);
 
   vector<signed char> checked_lits;
   vector<signed char> marks; // mark bits of literals
@@ -55,35 +56,35 @@ class LratChecker {
 
   vector<int> imported_clause; // original clause for reporting
 
-  void enlarge_vars(int64_t idx);
-  void import_literal(int lit);
-  void import_clause(const vector<int> &);
+  void enlarge_vars (int64_t idx);
+  void import_literal (int lit);
+  void import_clause (const vector<int> &);
 
   static const unsigned num_nonces = 4;
 
-  uint64_t nonces[num_nonces];     // random numbers for hashing
-  uint64_t last_hash;              // last computed hash value of clause
-  uint64_t last_id;                // id of the last added clause
-  uint64_t compute_hash(uint64_t); // compute and save hash value of clause
+  uint64_t nonces[num_nonces];      // random numbers for hashing
+  uint64_t last_hash;               // last computed hash value of clause
+  uint64_t last_id;                 // id of the last added clause
+  uint64_t compute_hash (uint64_t); // compute and save hash value of clause
 
   // Reduce hash value to the actual size.
   //
-  static uint64_t reduce_hash(uint64_t hash, uint64_t size);
+  static uint64_t reduce_hash (uint64_t hash, uint64_t size);
 
-  void enlarge_clauses(); // enlarge hash table for clauses
-  void insert();          // insert clause in hash table
+  void enlarge_clauses (); // enlarge hash table for clauses
+  void insert ();          // insert clause in hash table
   LratCheckerClause **
-  find(const uint64_t); // find clause position in hash table
+  find (const uint64_t); // find clause position in hash table
 
-  void add_clause(const char *type);
+  void add_clause (const char *type);
 
-  void collect_garbage_clauses();
+  void collect_garbage_clauses ();
 
-  LratCheckerClause *new_clause();
-  void delete_clause(LratCheckerClause *);
+  LratCheckerClause *new_clause ();
+  void delete_clause (LratCheckerClause *);
 
-  bool check(vector<uint64_t>); // check if new clause is implied by rup
-  bool check_resolution(
+  bool check (vector<uint64_t>); // check if new clause is implied by rup
+  bool check_resolution (
       vector<uint64_t>); // check if new clause is implied by resolution
 
   struct {
@@ -105,22 +106,23 @@ class LratChecker {
   } stats;
 
 public:
-  LratChecker(Internal *);
-  ~LratChecker();
+  LratChecker (Internal *);
+  ~LratChecker ();
 
-  void add_original_clause(uint64_t, const vector<int> &);
+  void add_original_clause (uint64_t, const vector<int> &);
   // check the proof chain for the new clause and add it to the checker
-  void add_derived_clause(uint64_t, const vector<int> &,
-                          const vector<uint64_t> &);
+  void add_derived_clause (uint64_t, const vector<int> &,
+                           const vector<uint64_t> &);
 
-  // used for frat. just assume the clause is correct because we have no proof.
-  void add_derived_clause(uint64_t, const vector<int> &);
+  // used for frat. just assume the clause is correct because we have no
+  // proof.
+  void add_derived_clause (uint64_t, const vector<int> &);
 
   // check if the clause is present and delete it from the checker
-  void delete_clause(uint64_t, const vector<int> &);
+  void delete_clause (uint64_t, const vector<int> &);
 
-  void print_stats();
-  void dump(); // for debugging purposes only
+  void print_stats ();
+  void dump (); // for debugging purposes only
 };
 
 } // namespace CaDiCaL

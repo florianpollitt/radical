@@ -14,8 +14,8 @@ struct Bin {
 
 typedef vector<Bin> Bins;
 
-inline void shrink_bins(Bins &bs) { shrink_vector(bs); }
-inline void erase_bins(Bins &bs) { erase_vector(bs); }
+inline void shrink_bins (Bins &bs) { shrink_vector (bs); }
+inline void erase_bins (Bins &bs) { erase_vector (bs); }
 
 } // namespace CaDiCaL
 

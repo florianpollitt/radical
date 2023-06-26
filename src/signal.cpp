@@ -28,28 +28,28 @@ static volatile bool caught_alarm = false;
 static volatile bool alarm_set = false;
 static int alarm_time = -1;
 
-void Handler::catch_alarm() { catch_signal(SIGALRM); }
+void Handler::catch_alarm () { catch_signal (SIGALRM); }
 
 #endif
 
-#define SIGNALS                                                                \
-  SIGNAL(SIGABRT)                                                              \
-  SIGNAL(SIGINT)                                                               \
-  SIGNAL(SIGSEGV)                                                              \
-  SIGNAL(SIGTERM)
+#define SIGNALS \
+  SIGNAL (SIGABRT) \
+  SIGNAL (SIGINT) \
+  SIGNAL (SIGSEGV) \
+  SIGNAL (SIGTERM)
 
-#define SIGNAL(SIG) static void (*SIG##_handler)(int);
+#define SIGNAL(SIG) static void (*SIG##_handler) (int);
 SIGNALS
 #undef SIGNAL
 
 #ifndef __WIN32
 
-static void (*SIGALRM_handler)(int);
+static void (*SIGALRM_handler) (int);
 
-void Signal::reset_alarm() {
+void Signal::reset_alarm () {
   if (!alarm_set)
     return;
-  (void)signal(SIGALRM, SIGALRM_handler);
+  (void) signal (SIGALRM, SIGALRM_handler);
   SIGALRM_handler = 0;
   caught_alarm = false;
   alarm_set = false;
@@ -58,22 +58,22 @@ void Signal::reset_alarm() {
 
 #endif
 
-void Signal::reset() {
+void Signal::reset () {
   signal_handler = 0;
-#define SIGNAL(SIG)                                                            \
-  (void)signal(SIG, SIG##_handler);                                            \
+#define SIGNAL(SIG) \
+  (void) signal (SIG, SIG##_handler); \
   SIG##_handler = 0;
   SIGNALS
 #undef SIGNAL
 #ifndef __WIN32
-  reset_alarm();
+  reset_alarm ();
 #endif
   caught_signal = false;
 }
 
-const char *Signal::name(int sig) {
-#define SIGNAL(SIG)                                                            \
-  if (sig == SIG)                                                              \
+const char *Signal::name (int sig) {
+#define SIGNAL(SIG) \
+  if (sig == SIG) \
     return #SIG;
   SIGNALS
 #undef SIGNAL
@@ -90,45 +90,45 @@ const char *Signal::name(int sig) {
 // 'Message' or just dump those statistics somewhere else were we have
 // exclusive access to.  All these solutions are painful and not elegant.
 
-static void catch_signal(int sig) {
+static void catch_signal (int sig) {
 #ifndef __WIN32
-  if (sig == SIGALRM && absolute_real_time() >= alarm_time) {
+  if (sig == SIGALRM && absolute_real_time () >= alarm_time) {
     if (!caught_alarm) {
       caught_alarm = true;
       if (signal_handler)
-        signal_handler->catch_alarm();
+        signal_handler->catch_alarm ();
     }
-    Signal::reset_alarm();
+    Signal::reset_alarm ();
   } else
 #endif
   {
     if (!caught_signal) {
       caught_signal = true;
       if (signal_handler)
-        signal_handler->catch_signal(sig);
+        signal_handler->catch_signal (sig);
     }
-    Signal::reset();
-    ::raise(sig);
+    Signal::reset ();
+    ::raise (sig);
   }
 }
 
-void Signal::set(Handler *h) {
+void Signal::set (Handler *h) {
   signal_handler = h;
-#define SIGNAL(SIG) SIG##_handler = signal(SIG, catch_signal);
+#define SIGNAL(SIG) SIG##_handler = signal (SIG, catch_signal);
   SIGNALS
 #undef SIGNAL
 }
 
 #ifndef __WIN32
 
-void Signal::alarm(int seconds) {
-  assert(seconds >= 0);
-  assert(!alarm_set);
-  assert(alarm_time < 0);
-  SIGALRM_handler = signal(SIGALRM, catch_signal);
+void Signal::alarm (int seconds) {
+  assert (seconds >= 0);
+  assert (!alarm_set);
+  assert (alarm_time < 0);
+  SIGALRM_handler = signal (SIGALRM, catch_signal);
   alarm_set = true;
-  alarm_time = absolute_real_time() + seconds;
-  ::alarm(seconds);
+  alarm_time = absolute_real_time () + seconds;
+  ::alarm (seconds);
 }
 
 #endif

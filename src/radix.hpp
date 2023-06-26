@@ -34,14 +34,14 @@ using namespace std;
 
 struct pointer_rank {
   typedef size_t Type;
-  Type operator()(void *ptr) { return (size_t)ptr; }
+  Type operator() (void *ptr) { return (size_t) ptr; }
 };
 
-template <class I, class Rank> void rsort(I first, I last, Rank rank) {
+template <class I, class Rank> void rsort (I first, I last, Rank rank) {
   typedef typename iterator_traits<I>::value_type T;
   typedef typename Rank::Type R;
 
-  assert(first <= last);
+  assert (first <= last);
   const size_t n = last - first;
   if (n <= 1)
     return;
@@ -72,18 +72,19 @@ template <class I, class Rank> void rsort(I first, I last, Rank rank) {
 
   R masked_lower = 0, masked_upper = mask;
 
-  for (size_t i = 0; i < 8 * sizeof(rank(*first)); i += l, shifted <<= l) {
+  for (size_t i = 0; i < 8 * sizeof (rank (*first));
+       i += l, shifted <<= l) {
 
     if (bounded && (lower & shifted) == (upper & shifted))
       continue;
 
-    memset(count + masked_lower, 0,
-           (masked_upper - masked_lower + 1) * sizeof *count);
+    memset (count + masked_lower, 0,
+            (masked_upper - masked_lower + 1) * sizeof *count);
 
     const I end = c + n;
 
     for (I p = c; p != end; p++) {
-      const auto r = rank(*p);
+      const auto r = rank (*p);
       if (!bounded)
         lower &= r, upper |= r;
       const auto s = r >> i;
@@ -108,16 +109,16 @@ template <class I, class Rank> void rsort(I first, I last, Rank rank) {
     }
 
     if (!initialized) {
-      assert(&*c == &*a); // MS VC++
-      v.resize(n);
-      b = v.begin();
+      assert (&*c == &*a); // MS VC++
+      v.resize (n);
+      b = v.begin ();
       initialized = true;
     }
 
     I d = (&*c == &*a) ? b : a; // MS VC++
 
     for (I p = c; p != end; p++) {
-      const auto r = rank(*p);
+      const auto r = rank (*p);
       const auto s = r >> i;
       const auto m = s & mask;
       d[count[m]++] = *p;
@@ -136,7 +137,7 @@ template <class I, class Rank> void rsort(I first, I last, Rank rank) {
 
 #ifndef NDEBUG
   for (I p = first; p + 1 != last; p++)
-    assert(rank(p[0]) <= rank(p[1]));
+    assert (rank (p[0]) <= rank (p[1]));
 #endif
 }
 
@@ -155,13 +156,13 @@ template <class I, class Rank> void rsort(I first, I last, Rank rank) {
 // use radix sort.  As usual we do not want to hard code it here (default
 // is '800') in order to make fuzzing and delta debugging more effective.
 
-#define MSORT(LIMIT, FIRST, LAST, RANK, LESS)                                  \
-  do {                                                                         \
-    const size_t N = LAST - FIRST;                                             \
-    if (N <= (size_t)(LIMIT))                                                  \
-      sort(FIRST, LAST, LESS);                                                 \
-    else                                                                       \
-      rsort(FIRST, LAST, RANK);                                                \
+#define MSORT(LIMIT, FIRST, LAST, RANK, LESS) \
+  do { \
+    const size_t N = LAST - FIRST; \
+    if (N <= (size_t) (LIMIT)) \
+      sort (FIRST, LAST, LESS); \
+    else \
+      rsort (FIRST, LAST, RANK); \
   } while (0)
 
 } // namespace CaDiCaL

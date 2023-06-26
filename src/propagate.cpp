@@ -27,9 +27,9 @@ static Clause *decision_reason = &decision_reason_clause;
 // current decision level, the concept of assignment level does not make
 // sense, and accordingly this function can be skipped.
 
-inline int Internal::assignment_level(int lit, Clause *reason) {
+inline int Internal::assignment_level (int lit, Clause *reason) {
 
-  assert(opts.chrono);
+  assert (opts.chrono);
   if (!reason)
     return level;
 
@@ -38,8 +38,8 @@ inline int Internal::assignment_level(int lit, Clause *reason) {
   for (const auto &other : *reason) {
     if (other == lit)
       continue;
-    assert(val(other));
-    int tmp = var(other).level;
+    assert (val (other));
+    int tmp = var (other).level;
     if (tmp > res)
       res = tmp;
   }
@@ -53,63 +53,64 @@ inline int Internal::assignment_level(int lit, Clause *reason) {
 // also TODO: to avoid if branch in propagate use this in learn unit clause
 // need to rember reason clause for that
 //
-void Internal::build_chain_for_units(int lit, Clause *reason) {
+void Internal::build_chain_for_units (int lit, Clause *reason) {
   if (!opts.lrat || opts.lratexternal)
     return;
-  // LOG ("building chain for units");        bad line for debugging equivalence
-  if (opts.chrono && assignment_level(lit, reason))
+  // LOG ("building chain for units");        bad line for debugging
+  // equivalence
+  if (opts.chrono && assignment_level (lit, reason))
     return;
   else if (!opts.chrono && level)
     return; // not decision level 0
-  assert(lrat_chain.empty());
+  assert (lrat_chain.empty ());
   for (auto &reason_lit : *reason) {
     if (lit == reason_lit)
       continue;
-    assert(val(reason_lit));
-    if (!val(reason_lit))
+    assert (val (reason_lit));
+    if (!val (reason_lit))
       continue;
-    const unsigned uidx = vlit(val(reason_lit) * reason_lit);
+    const unsigned uidx = vlit (val (reason_lit) * reason_lit);
     uint64_t id = unit_clauses[uidx];
-    lrat_chain.push_back(id);
+    lrat_chain.push_back (id);
   }
-  lrat_chain.push_back(reason->id);
+  lrat_chain.push_back (reason->id);
 }
 
-// same code as above but reason is assumed to be conflict and lit is not needed
-// also not inlined as it is not called inside of propagate.
+// same code as above but reason is assumed to be conflict and lit is not
+// needed also not inlined as it is not called inside of propagate.
 // TODO: not inlined because its used in vivify. Bad??
 //
-void Internal::build_chain_for_empty() {
-  if (!opts.lrat || opts.lratexternal || !lrat_chain.empty())
+void Internal::build_chain_for_empty () {
+  if (!opts.lrat || opts.lratexternal || !lrat_chain.empty ())
     return;
-  assert(!level);
-  assert(lrat_chain.empty());
-  assert(conflict);
-  LOG(conflict, "lrat for global empty clause with conflict");
+  assert (!level);
+  assert (lrat_chain.empty ());
+  assert (conflict);
+  LOG (conflict, "lrat for global empty clause with conflict");
   for (auto &lit : *conflict) {
-    assert(val(lit) < 0);
-    const unsigned uidx = vlit(-lit);
+    assert (val (lit) < 0);
+    const unsigned uidx = vlit (-lit);
     uint64_t id = unit_clauses[uidx];
-    lrat_chain.push_back(id);
+    lrat_chain.push_back (id);
   }
-  lrat_chain.push_back(conflict->id);
+  lrat_chain.push_back (conflict->id);
 }
 
 /*------------------------------------------------------------------------*/
 
-inline void Internal::search_assign(int lit, Clause *reason) {
+inline void Internal::search_assign (int lit, Clause *reason) {
 
   if (level)
-    require_mode(SEARCH);
+    require_mode (SEARCH);
 
-  const int idx = vidx(lit);
-  assert(!vals[idx]);
-  assert(!flags(idx).eliminated() || reason == decision_reason);
-  Var &v = var(idx);
+  const int idx = vidx (lit);
+  assert (!vals[idx]);
+  assert (!flags (idx).eliminated () || reason == decision_reason);
+  Var &v = var (idx);
   int lit_level;
 
-  assert(!opts.lrat || opts.lratexternal || level ||
-         reason == decision_reason || !lrat_chain.empty());
+  assert (!opts.lrat || opts.lratexternal || level ||
+          reason == decision_reason || !lrat_chain.empty ());
 
   // The following cases are explained in the two comments above before
   // 'decision_reason' and 'assignment_level'.
@@ -119,40 +120,40 @@ inline void Internal::search_assign(int lit, Clause *reason) {
   else if (reason == decision_reason)
     lit_level = level, reason = 0;
   else if (opts.chrono)
-    lit_level = assignment_level(lit, reason);
+    lit_level = assignment_level (lit, reason);
   else
     lit_level = level;
   if (!lit_level)
     reason = 0;
 
   v.level = lit_level;
-  v.trail = (int)trail.size();
+  v.trail = (int) trail.size ();
   v.reason = reason;
   if (!lit_level)
-    learn_unit_clause(lit); // increases 'stats.fixed'
-  const signed char tmp = sign(lit);
+    learn_unit_clause (lit); // increases 'stats.fixed'
+  const signed char tmp = sign (lit);
   vals[idx] = tmp;
   vals[-idx] = -tmp;
-  assert(val(lit) > 0);
-  assert(val(-lit) < 0);
+  assert (val (lit) > 0);
+  assert (val (-lit) < 0);
   if (!searching_lucky_phases)
     phases.saved[idx] = tmp; // phase saving during search
-  trail.push_back(lit);
+  trail.push_back (lit);
 #ifdef LOGGING
   if (!lit_level)
-    LOG("root-level unit assign %d @ 0", lit);
+    LOG ("root-level unit assign %d @ 0", lit);
   else
-    LOG(reason, "search assign %d @ %d", lit, lit_level);
+    LOG (reason, "search assign %d @ %d", lit, lit_level);
 #endif
 
-  if (watching()) {
-    const Watches &ws = watches(-lit);
-    if (!ws.empty()) {
+  if (watching ()) {
+    const Watches &ws = watches (-lit);
+    if (!ws.empty ()) {
       const Watch &w = ws[0];
-      __builtin_prefetch(&w, 0, 1);
+      __builtin_prefetch (&w, 0, 1);
     }
   }
-  lrat_chain.clear();
+  lrat_chain.clear ();
 }
 
 /*------------------------------------------------------------------------*/
@@ -163,26 +164,26 @@ inline void Internal::search_assign(int lit, Clause *reason) {
 // clause.  This happens far less frequently than the 'search_assign' above,
 // which is called directly in 'propagate' below and thus is inlined.
 
-void Internal::assign_unit(int lit) {
-  assert(!level);
-  search_assign(lit, 0);
+void Internal::assign_unit (int lit) {
+  assert (!level);
+  search_assign (lit, 0);
 }
 
 // Just assume the given literal as decision (increase decision level and
 // assign it).  This is used below in 'decide'.
 
-void Internal::search_assume_decision(int lit) {
-  require_mode(SEARCH);
-  assert(propagated == trail.size());
+void Internal::search_assume_decision (int lit) {
+  require_mode (SEARCH);
+  assert (propagated == trail.size ());
   level++;
-  control.push_back(Level(lit, trail.size()));
-  LOG("search decide %d", lit);
-  search_assign(lit, decision_reason);
+  control.push_back (Level (lit, trail.size ()));
+  LOG ("search decide %d", lit);
+  search_assign (lit, decision_reason);
 }
 
-void Internal::search_assign_driving(int lit, Clause *c) {
-  require_mode(SEARCH);
-  search_assign(lit, c);
+void Internal::search_assign_driving (int lit, Clause *c) {
+  require_mode (SEARCH);
+  search_assign (lit, c);
 }
 
 /*------------------------------------------------------------------------*/
@@ -204,38 +205,38 @@ void Internal::search_assign_driving(int lit, Clause *c) {
 // propagation costs (2013 JAIR article by Ian Gent) at the expense of four
 // more bytes for each clause.
 
-bool Internal::propagate() {
+bool Internal::propagate () {
 
   if (level)
-    require_mode(SEARCH);
-  assert(!unsat);
+    require_mode (SEARCH);
+  assert (!unsat);
 
-  START(propagate);
+  START (propagate);
 
   // Updating statistics counter in the propagation loops is costly so we
   // delay until propagation ran to completion.
   //
   int64_t before = propagated;
 
-  while (!conflict && propagated != trail.size()) {
+  while (!conflict && propagated != trail.size ()) {
 
     const int lit = -trail[propagated++];
-    LOG("propagating %d", -lit);
-    Watches &ws = watches(lit);
+    LOG ("propagating %d", -lit);
+    Watches &ws = watches (lit);
 
-    const const_watch_iterator eow = ws.end();
-    watch_iterator j = ws.begin();
+    const const_watch_iterator eow = ws.end ();
+    watch_iterator j = ws.begin ();
     const_watch_iterator i = j;
 
     while (i != eow) {
 
       const Watch w = *j++ = *i++;
-      const signed char b = val(w.blit);
+      const signed char b = val (w.blit);
 
       if (b > 0)
         continue; // blocking literal satisfied
 
-      if (w.binary()) {
+      if (w.binary ()) {
 
         // In principle we can ignore garbage binary clauses too, but that
         // would require to dereference the clause pointer all the time with
@@ -265,8 +266,8 @@ bool Internal::propagate() {
         if (b < 0)
           conflict = w.clause; // but continue ...
         else {
-          build_chain_for_units(w.blit, w.clause);
-          search_assign(w.blit, w.clause);
+          build_chain_for_units (w.blit, w.clause);
+          search_assign (w.blit, w.clause);
           // lrat_chain.clear (); done in search_assign
         }
 
@@ -285,7 +286,7 @@ bool Internal::propagate() {
           continue;
         }
 
-        literal_iterator lits = w.clause->begin();
+        literal_iterator lits = w.clause->begin ();
 
         // Simplify code by forcing 'lit' to be the second literal in the
         // clause.  This goes back to MiniSAT.  We use a branch-less version
@@ -297,7 +298,7 @@ bool Internal::propagate() {
         // which achieves the same effect, but needs a branch.
         //
         const int other = lits[0] ^ lits[1] ^ lit;
-        const signed char u = val(other); // value of the other watch
+        const signed char u = val (other); // value of the other watch
 
         if (u > 0)
           j[-1].blit = other; // satisfied, just replace blit
@@ -321,20 +322,20 @@ bool Internal::propagate() {
           int r = 0;
           signed char v = -1;
 
-          while (k != end && (v = val(r = *k)) < 0)
+          while (k != end && (v = val (r = *k)) < 0)
             k++;
 
           if (v < 0) { // need second search starting at the head?
 
             k = lits + 2;
-            assert(w.clause->pos <= size);
-            while (k != middle && (v = val(r = *k)) < 0)
+            assert (w.clause->pos <= size);
+            while (k != middle && (v = val (r = *k)) < 0)
               k++;
           }
 
           w.clause->pos = k - lits; // always save position
 
-          assert(lits + 2 <= k), assert(k <= w.clause->end());
+          assert (lits + 2 <= k), assert (k <= w.clause->end ());
 
           if (v > 0) {
 
@@ -346,25 +347,25 @@ bool Internal::propagate() {
 
             // Found new unassigned replacement literal to be watched.
 
-            LOG(w.clause, "unwatch %d in", lit);
+            LOG (w.clause, "unwatch %d in", lit);
 
             lits[0] = other;
             lits[1] = r;
             *k = lit;
 
-            watch_literal(r, lit, w.clause);
+            watch_literal (r, lit, w.clause);
 
             j--; // Drop this watch from the watch list of 'lit'.
 
           } else if (!u) {
 
-            assert(v < 0);
+            assert (v < 0);
 
             // The other watch is unassigned ('!u') and all other literals
             // assigned to false (still 'v < 0'), thus we found a unit.
             //
-            build_chain_for_units(other, w.clause);
-            search_assign(other, w.clause);
+            build_chain_for_units (other, w.clause);
+            search_assign (other, w.clause);
             // lrat_chain.clear (); done in search_assign
 
             // Similar code is in the implementation of the SAT'18 paper on
@@ -374,39 +375,39 @@ bool Internal::propagate() {
             //
             if (opts.chrono > 1) {
 
-              const int other_level = var(other).level;
+              const int other_level = var (other).level;
 
-              if (other_level > var(lit).level) {
+              if (other_level > var (lit).level) {
 
                 // The assignment level of the new unit 'other' is larger
                 // than the assignment level of 'lit'.  Thus we should find
                 // another literal in the clause at that higher assignment
                 // level and watch that instead of 'lit'.
 
-                assert(size > 2);
+                assert (size > 2);
 
                 int pos, s = 0;
 
                 for (pos = 2; pos < size; pos++)
-                  if (var(s = lits[pos]).level == other_level)
+                  if (var (s = lits[pos]).level == other_level)
                     break;
 
-                assert(s);
-                assert(pos < size);
+                assert (s);
+                assert (pos < size);
 
-                LOG(w.clause, "unwatch %d in", lit);
+                LOG (w.clause, "unwatch %d in", lit);
                 lits[pos] = lit;
                 lits[0] = other;
                 lits[1] = s;
-                watch_literal(s, other, w.clause);
+                watch_literal (s, other, w.clause);
 
                 j--; // Drop this watch from the watch list of 'lit'.
               }
             }
           } else {
 
-            assert(u < 0);
-            assert(v < 0);
+            assert (u < 0);
+            assert (v < 0);
 
             // The other watch is assigned false ('u < 0') and all other
             // literals as well (still 'v < 0'), thus we found a conflict.
@@ -423,14 +424,14 @@ bool Internal::propagate() {
       while (i != eow)
         *j++ = *i++;
 
-      ws.resize(j - ws.begin());
+      ws.resize (j - ws.begin ());
     }
   }
 
   if (searching_lucky_phases) {
 
     if (conflict)
-      LOG(conflict, "ignoring lucky conflict");
+      LOG (conflict, "ignoring lucky conflict");
 
   } else {
 
@@ -446,7 +447,7 @@ bool Internal::propagate() {
         stats.stabconflicts++;
       stats.conflicts++;
 
-      LOG(conflict, "conflict");
+      LOG (conflict, "conflict");
 
       // The trail before the current decision level was conflict free.
       //
@@ -454,7 +455,7 @@ bool Internal::propagate() {
     }
   }
 
-  STOP(propagate);
+  STOP (propagate);
 
   return !conflict;
 }

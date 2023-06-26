@@ -31,57 +31,58 @@ class Proof {
   LratBuilder *lratbuilder; // create lrat proof chain for any clause
   LratChecker *lratchecker; // lrat checker
 
-  void add_literal(int internal_lit); // add to 'clause'
-  void add_literals(Clause *);        // add to 'clause'
+  void add_literal (int internal_lit); // add to 'clause'
+  void add_literals (Clause *);        // add to 'clause'
 
-  void add_literals(const vector<int> &); // ditto
+  void add_literals (const vector<int> &); // ditto
 
-  void add_original_clause(); // notify observers of original clauses
-  void add_derived_clause();  // notify observers of derived clauses
-  void delete_clause();       // notify observers of deleted clauses
-  void finalize_clause();
+  void add_original_clause (); // notify observers of original clauses
+  void add_derived_clause ();  // notify observers of derived clauses
+  void delete_clause ();       // notify observers of deleted clauses
+  void finalize_clause ();
 
 public:
-  Proof(Internal *);
-  ~Proof();
+  Proof (Internal *);
+  ~Proof ();
 
-  void connect(Tracer *t) { tracer = t; }
-  void connect(LratBuilder *lb) { lratbuilder = lb; }
-  void connect(LratChecker *lc) { lratchecker = lc; }
-  void connect(Checker *c) { checker = c; }
+  void connect (Tracer *t) { tracer = t; }
+  void connect (LratBuilder *lb) { lratbuilder = lb; }
+  void connect (LratChecker *lc) { lratchecker = lc; }
+  void connect (Checker *c) { checker = c; }
 
   // Add original clauses to the proof (for online proof checking).
   //
-  void add_original_clause(uint64_t, const vector<int> &);
+  void add_original_clause (uint64_t, const vector<int> &);
 
   // Add derived (such as learned) clauses to the proof.
   //
-  void add_derived_empty_clause(uint64_t);
-  void add_derived_unit_clause(uint64_t, int unit);
-  void add_derived_clause(Clause *);
-  void add_derived_clause(uint64_t, const vector<int> &);
+  void add_derived_empty_clause (uint64_t);
+  void add_derived_unit_clause (uint64_t, int unit);
+  void add_derived_clause (Clause *);
+  void add_derived_clause (uint64_t, const vector<int> &);
 
-  void add_derived_empty_clause(uint64_t, const vector<uint64_t> &);
-  void add_derived_unit_clause(uint64_t, int unit, const vector<uint64_t> &);
-  void add_derived_clause(Clause *c, const vector<uint64_t> &);
-  void add_derived_clause(uint64_t, const vector<int> &,
-                          const vector<uint64_t> &);
+  void add_derived_empty_clause (uint64_t, const vector<uint64_t> &);
+  void add_derived_unit_clause (uint64_t, int unit,
+                                const vector<uint64_t> &);
+  void add_derived_clause (Clause *c, const vector<uint64_t> &);
+  void add_derived_clause (uint64_t, const vector<int> &,
+                           const vector<uint64_t> &);
 
-  void delete_clause(uint64_t, const vector<int> &);
-  void delete_unit_clause(uint64_t id, const int lit);
-  void delete_clause(Clause *);
+  void delete_clause (uint64_t, const vector<int> &);
+  void delete_unit_clause (uint64_t id, const int lit);
+  void delete_clause (Clause *);
 
-  void finalize_unit(uint64_t, int);
-  void finalize_clause(uint64_t, const vector<int> &c);
-  void finalize_clause(Clause *);
+  void finalize_unit (uint64_t, int);
+  void finalize_clause (uint64_t, const vector<int> &c);
+  void finalize_clause (Clause *);
 
   // These two actually pretend to add and remove a clause.
   //
-  void flush_clause(Clause *);           // remove falsified literals
-  void strengthen_clause(Clause *, int); // remove second argument
-  void strengthen_clause(Clause *, int, const vector<uint64_t> &);
+  void flush_clause (Clause *);           // remove falsified literals
+  void strengthen_clause (Clause *, int); // remove second argument
+  void strengthen_clause (Clause *, int, const vector<uint64_t> &);
 
-  void flush();
+  void flush ();
 };
 
 } // namespace CaDiCaL

@@ -26,7 +26,7 @@ struct Queue {
   int unassigned;  // all variables after this one are assigned
   int64_t bumped;  // see 'Internal.update_queue_unassigned'
 
-  Queue() : first(0), last(0), unassigned(0), bumped(0) {}
+  Queue () : first (0), last (0), unassigned (0), bumped (0) {}
 
   // We explicitly provide the mapping of integer indices to links to the
   // following two (inlined) functions.  This avoids including
@@ -34,7 +34,7 @@ struct Queue {
   // code here in this header file.  Otherwise they are just ordinary doubly
   // linked list 'dequeue' and 'enqueue' operations.
 
-  inline void dequeue(Links &links, int idx) {
+  inline void dequeue (Links &links, int idx) {
     Link &l = links[idx];
     if (l.prev)
       links[l.prev].next = l.next;
@@ -46,7 +46,7 @@ struct Queue {
       last = l.prev;
   }
 
-  inline void enqueue(Links &links, int idx) {
+  inline void enqueue (Links &links, int idx) {
     Link &l = links[idx];
     if ((l.prev = last))
       links[last].next = idx;

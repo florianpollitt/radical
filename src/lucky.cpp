@@ -19,28 +19,28 @@ namespace CaDiCaL {
 // and will just abort the particular lucky function, while the former will
 // abort all (by returning '-1').
 
-int Internal::unlucky(int res) {
+int Internal::unlucky (int res) {
   if (level > 0)
-    backtrack();
+    backtrack ();
   if (conflict)
     conflict = 0;
   return res;
 }
 
-int Internal::trivially_false_satisfiable() {
-  LOG("checking that all clauses contain a negative literal");
-  assert(!level);
-  assert(assumptions.empty());
+int Internal::trivially_false_satisfiable () {
+  LOG ("checking that all clauses contain a negative literal");
+  assert (!level);
+  assert (assumptions.empty ());
   for (const auto &c : clauses) {
-    if (terminated_asynchronously(100))
-      return unlucky(-1);
+    if (terminated_asynchronously (100))
+      return unlucky (-1);
     if (c->garbage)
       continue;
     if (c->redundant)
       continue;
     bool satisfied = false, found_negative_literal = false;
     for (const auto &lit : *c) {
-      const signed char tmp = val(lit);
+      const signed char tmp = val (lit);
       if (tmp > 0) {
         satisfied = true;
         break;
@@ -54,40 +54,40 @@ int Internal::trivially_false_satisfiable() {
     }
     if (satisfied || found_negative_literal)
       continue;
-    LOG(c, "found purely positively");
-    return unlucky(0);
+    LOG (c, "found purely positively");
+    return unlucky (0);
   }
-  VERBOSE(1, "all clauses contain a negative literal");
+  VERBOSE (1, "all clauses contain a negative literal");
   for (auto idx : vars) {
-    if (terminated_asynchronously(10))
-      return unlucky(-1);
-    if (val(idx))
+    if (terminated_asynchronously (10))
+      return unlucky (-1);
+    if (val (idx))
       continue;
-    search_assume_decision(-idx);
-    if (propagate())
+    search_assume_decision (-idx);
+    if (propagate ())
       continue;
-    assert(level > 0);
-    LOG("propagation failed including redundant clauses");
-    return unlucky(0);
+    assert (level > 0);
+    LOG ("propagation failed including redundant clauses");
+    return unlucky (0);
   }
   stats.lucky.constant.zero++;
   return 10;
 }
 
-int Internal::trivially_true_satisfiable() {
-  LOG("checking that all clauses contain a positive literal");
-  assert(!level);
-  assert(assumptions.empty());
+int Internal::trivially_true_satisfiable () {
+  LOG ("checking that all clauses contain a positive literal");
+  assert (!level);
+  assert (assumptions.empty ());
   for (const auto &c : clauses) {
-    if (terminated_asynchronously(100))
-      return unlucky(-1);
+    if (terminated_asynchronously (100))
+      return unlucky (-1);
     if (c->garbage)
       continue;
     if (c->redundant)
       continue;
     bool satisfied = false, found_positive_literal = false;
     for (const auto &lit : *c) {
-      const signed char tmp = val(lit);
+      const signed char tmp = val (lit);
       if (tmp > 0) {
         satisfied = true;
         break;
@@ -101,21 +101,21 @@ int Internal::trivially_true_satisfiable() {
     }
     if (satisfied || found_positive_literal)
       continue;
-    LOG(c, "found purely negatively");
-    return unlucky(0);
+    LOG (c, "found purely negatively");
+    return unlucky (0);
   }
-  VERBOSE(1, "all clauses contain a positive literal");
+  VERBOSE (1, "all clauses contain a positive literal");
   for (auto idx : vars) {
-    if (terminated_asynchronously(10))
-      return unlucky(-1);
-    if (val(idx))
+    if (terminated_asynchronously (10))
+      return unlucky (-1);
+    if (val (idx))
       continue;
-    search_assume_decision(idx);
-    if (propagate())
+    search_assume_decision (idx);
+    if (propagate ())
       continue;
-    assert(level > 0);
-    LOG("propagation failed including redundant clauses");
-    return unlucky(0);
+    assert (level > 0);
+    LOG ("propagation failed including redundant clauses");
+    return unlucky (0);
   }
   stats.lucky.constant.one++;
   return 10;
@@ -123,84 +123,84 @@ int Internal::trivially_true_satisfiable() {
 
 /*------------------------------------------------------------------------*/
 
-int Internal::forward_false_satisfiable() {
-  LOG("checking increasing variable index false assignment");
-  assert(!unsat);
-  assert(!level);
-  assert(assumptions.empty());
+int Internal::forward_false_satisfiable () {
+  LOG ("checking increasing variable index false assignment");
+  assert (!unsat);
+  assert (!level);
+  assert (assumptions.empty ());
   for (auto idx : vars) {
-    if (terminated_asynchronously(100))
-      return unlucky(-1);
-    if (val(idx))
+    if (terminated_asynchronously (100))
+      return unlucky (-1);
+    if (val (idx))
       continue;
-    search_assume_decision(-idx);
-    if (!propagate())
-      return unlucky(0);
+    search_assume_decision (-idx);
+    if (!propagate ())
+      return unlucky (0);
   }
-  VERBOSE(1, "forward assuming variables false satisfies formula");
-  assert(satisfied());
+  VERBOSE (1, "forward assuming variables false satisfies formula");
+  assert (satisfied ());
   stats.lucky.forward.zero++;
   return 10;
 }
 
-int Internal::forward_true_satisfiable() {
-  LOG("checking increasing variable index true assignment");
-  assert(!unsat);
-  assert(!level);
-  assert(assumptions.empty());
+int Internal::forward_true_satisfiable () {
+  LOG ("checking increasing variable index true assignment");
+  assert (!unsat);
+  assert (!level);
+  assert (assumptions.empty ());
   for (auto idx : vars) {
-    if (terminated_asynchronously(10))
-      return unlucky(-1);
-    if (val(idx))
+    if (terminated_asynchronously (10))
+      return unlucky (-1);
+    if (val (idx))
       continue;
-    search_assume_decision(idx);
-    if (!propagate())
-      return unlucky(0);
+    search_assume_decision (idx);
+    if (!propagate ())
+      return unlucky (0);
   }
-  VERBOSE(1, "forward assuming variables true satisfies formula");
-  assert(satisfied());
+  VERBOSE (1, "forward assuming variables true satisfies formula");
+  assert (satisfied ());
   stats.lucky.forward.one++;
   return 10;
 }
 
 /*------------------------------------------------------------------------*/
 
-int Internal::backward_false_satisfiable() {
-  LOG("checking decreasing variable index false assignment");
-  assert(!unsat);
-  assert(!level);
-  assert(assumptions.empty());
+int Internal::backward_false_satisfiable () {
+  LOG ("checking decreasing variable index false assignment");
+  assert (!unsat);
+  assert (!level);
+  assert (assumptions.empty ());
   for (int idx = max_var; idx > 0; idx--) {
-    if (terminated_asynchronously(10))
-      return unlucky(-1);
-    if (val(idx))
+    if (terminated_asynchronously (10))
+      return unlucky (-1);
+    if (val (idx))
       continue;
-    search_assume_decision(-idx);
-    if (!propagate())
-      return unlucky(0);
+    search_assume_decision (-idx);
+    if (!propagate ())
+      return unlucky (0);
   }
-  VERBOSE(1, "backward assuming variables false satisfies formula");
-  assert(satisfied());
+  VERBOSE (1, "backward assuming variables false satisfies formula");
+  assert (satisfied ());
   stats.lucky.backward.zero++;
   return 10;
 }
 
-int Internal::backward_true_satisfiable() {
-  LOG("checking decreasing variable index true assignment");
-  assert(!unsat);
-  assert(!level);
-  assert(assumptions.empty());
+int Internal::backward_true_satisfiable () {
+  LOG ("checking decreasing variable index true assignment");
+  assert (!unsat);
+  assert (!level);
+  assert (assumptions.empty ());
   for (int idx = max_var; idx > 0; idx--) {
-    if (terminated_asynchronously(10))
-      return unlucky(-1);
-    if (val(idx))
+    if (terminated_asynchronously (10))
+      return unlucky (-1);
+    if (val (idx))
       continue;
-    search_assume_decision(idx);
-    if (!propagate())
-      return unlucky(0);
+    search_assume_decision (idx);
+    if (!propagate ())
+      return unlucky (0);
   }
-  VERBOSE(1, "backward assuming variables true satisfies formula");
-  assert(satisfied());
+  VERBOSE (1, "backward assuming variables true satisfies formula");
+  assert (satisfied ());
   stats.lucky.backward.one++;
   return 10;
 }
@@ -213,13 +213,13 @@ int Internal::backward_true_satisfiable() {
 // Already satisfied clauses are of course skipped.  A reverse function
 // is not implemented yet.
 
-int Internal::positive_horn_satisfiable() {
-  LOG("checking that all clauses are positive horn satisfiable");
-  assert(!level);
-  assert(assumptions.empty());
+int Internal::positive_horn_satisfiable () {
+  LOG ("checking that all clauses are positive horn satisfiable");
+  assert (!level);
+  assert (assumptions.empty ());
   for (const auto &c : clauses) {
-    if (terminated_asynchronously(10))
-      return unlucky(-1);
+    if (terminated_asynchronously (10))
+      return unlucky (-1);
     if (c->garbage)
       continue;
     if (c->redundant)
@@ -227,7 +227,7 @@ int Internal::positive_horn_satisfiable() {
     int positive_literal = 0;
     bool satisfied = false;
     for (const auto &lit : *c) {
-      const signed char tmp = val(lit);
+      const signed char tmp = val (lit);
       if (tmp > 0) {
         satisfied = true;
         break;
@@ -242,43 +242,43 @@ int Internal::positive_horn_satisfiable() {
     if (satisfied)
       continue;
     if (!positive_literal) {
-      LOG(c, "no positive unassigned literal in");
-      return unlucky(0);
+      LOG (c, "no positive unassigned literal in");
+      return unlucky (0);
     }
-    assert(positive_literal > 0);
-    LOG(c, "found positive literal %d in", positive_literal);
-    search_assume_decision(positive_literal);
-    if (propagate())
+    assert (positive_literal > 0);
+    LOG (c, "found positive literal %d in", positive_literal);
+    search_assume_decision (positive_literal);
+    if (propagate ())
       continue;
-    LOG("propagation of positive literal %d leads to conflict",
-        positive_literal);
-    return unlucky(0);
+    LOG ("propagation of positive literal %d leads to conflict",
+         positive_literal);
+    return unlucky (0);
   }
   for (auto idx : vars) {
-    if (terminated_asynchronously(10))
-      return unlucky(-1);
-    if (val(idx))
+    if (terminated_asynchronously (10))
+      return unlucky (-1);
+    if (val (idx))
       continue;
-    search_assume_decision(-idx);
-    if (propagate())
+    search_assume_decision (-idx);
+    if (propagate ())
       continue;
-    LOG("propagation of remaining literal %d leads to conflict", -idx);
-    return unlucky(0);
+    LOG ("propagation of remaining literal %d leads to conflict", -idx);
+    return unlucky (0);
   }
-  VERBOSE(1, "clauses are positive horn satisfied");
-  assert(!conflict);
-  assert(satisfied());
+  VERBOSE (1, "clauses are positive horn satisfied");
+  assert (!conflict);
+  assert (satisfied ());
   stats.lucky.horn.positive++;
   return 10;
 }
 
-int Internal::negative_horn_satisfiable() {
-  LOG("checking that all clauses are negative horn satisfiable");
-  assert(!level);
-  assert(assumptions.empty());
+int Internal::negative_horn_satisfiable () {
+  LOG ("checking that all clauses are negative horn satisfiable");
+  assert (!level);
+  assert (assumptions.empty ());
   for (const auto &c : clauses) {
-    if (terminated_asynchronously(10))
-      return unlucky(-1);
+    if (terminated_asynchronously (10))
+      return unlucky (-1);
     if (c->garbage)
       continue;
     if (c->redundant)
@@ -286,7 +286,7 @@ int Internal::negative_horn_satisfiable() {
     int negative_literal = 0;
     bool satisfied = false;
     for (const auto &lit : *c) {
-      const signed char tmp = val(lit);
+      const signed char tmp = val (lit);
       if (tmp > 0) {
         satisfied = true;
         break;
@@ -302,80 +302,80 @@ int Internal::negative_horn_satisfiable() {
       continue;
     if (!negative_literal) {
       if (level > 0)
-        backtrack();
-      LOG(c, "no negative unassigned literal in");
-      return unlucky(0);
+        backtrack ();
+      LOG (c, "no negative unassigned literal in");
+      return unlucky (0);
     }
-    assert(negative_literal < 0);
-    LOG(c, "found negative literal %d in", negative_literal);
-    search_assume_decision(negative_literal);
-    if (propagate())
+    assert (negative_literal < 0);
+    LOG (c, "found negative literal %d in", negative_literal);
+    search_assume_decision (negative_literal);
+    if (propagate ())
       continue;
-    LOG("propagation of negative literal %d leads to conflict",
-        negative_literal);
-    return unlucky(0);
+    LOG ("propagation of negative literal %d leads to conflict",
+         negative_literal);
+    return unlucky (0);
   }
   for (auto idx : vars) {
-    if (terminated_asynchronously(10))
-      return unlucky(-1);
-    if (val(idx))
+    if (terminated_asynchronously (10))
+      return unlucky (-1);
+    if (val (idx))
       continue;
-    search_assume_decision(idx);
-    if (propagate())
+    search_assume_decision (idx);
+    if (propagate ())
       continue;
-    LOG("propagation of remaining literal %d leads to conflict", idx);
-    return unlucky(0);
+    LOG ("propagation of remaining literal %d leads to conflict", idx);
+    return unlucky (0);
   }
-  VERBOSE(1, "clauses are negative horn satisfied");
-  assert(!conflict);
-  assert(satisfied());
+  VERBOSE (1, "clauses are negative horn satisfied");
+  assert (!conflict);
+  assert (satisfied ());
   stats.lucky.horn.negative++;
   return 10;
 }
 
 /*------------------------------------------------------------------------*/
 
-int Internal::lucky_phases() {
-  assert(!level);
-  require_mode(SEARCH);
+int Internal::lucky_phases () {
+  assert (!level);
+  require_mode (SEARCH);
   if (!opts.lucky)
     return 0;
 
   // TODO: Some of the lucky assignments can also be found if there are
   // assumptions, but this is not completely implemented nor tested yet.
   // Nothing done for constraint either.
-  if (!assumptions.empty() || !constraint.empty())
+  if (!assumptions.empty () || !constraint.empty ())
     return 0;
 
-  START(search);
-  START(lucky);
-  assert(!searching_lucky_phases);
+  START (search);
+  START (lucky);
+  assert (!searching_lucky_phases);
   searching_lucky_phases = true;
   stats.lucky.tried++;
-  int res = trivially_false_satisfiable();
+  int res = trivially_false_satisfiable ();
   if (!res)
-    res = trivially_true_satisfiable();
+    res = trivially_true_satisfiable ();
   if (!res)
-    res = forward_true_satisfiable();
+    res = forward_true_satisfiable ();
   if (!res)
-    res = forward_false_satisfiable();
+    res = forward_false_satisfiable ();
   if (!res)
-    res = backward_false_satisfiable();
+    res = backward_false_satisfiable ();
   if (!res)
-    res = backward_true_satisfiable();
+    res = backward_true_satisfiable ();
   if (!res)
-    res = positive_horn_satisfiable();
+    res = positive_horn_satisfiable ();
   if (!res)
-    res = negative_horn_satisfiable();
+    res = negative_horn_satisfiable ();
   if (res < 0)
-    assert(termination_forced), res = 0;
+    assert (termination_forced), res = 0;
   if (res == 10)
     stats.lucky.succeeded++;
-  report('l', !res);
-  assert(searching_lucky_phases);
+  report ('l', !res);
+  assert (searching_lucky_phases);
   searching_lucky_phases = false;
-  STOP(lucky);
-  STOP(search);
+  STOP (lucky);
+  STOP (search);
 
   return res;
 }

@@ -7,58 +7,58 @@
 
 #ifndef QUIET
 
-#define LINE()                                                                 \
-  do {                                                                         \
-    if (internal)                                                              \
-      internal->message();                                                     \
+#define LINE() \
+  do { \
+    if (internal) \
+      internal->message (); \
   } while (0)
 
-#define MSG(...)                                                               \
-  do {                                                                         \
-    if (internal)                                                              \
-      internal->message(__VA_ARGS__);                                          \
+#define MSG(...) \
+  do { \
+    if (internal) \
+      internal->message (__VA_ARGS__); \
   } while (0)
 
-#define PHASE(...)                                                             \
-  do {                                                                         \
-    if (internal)                                                              \
-      internal->phase(__VA_ARGS__);                                            \
+#define PHASE(...) \
+  do { \
+    if (internal) \
+      internal->phase (__VA_ARGS__); \
   } while (0)
 
-#define SECTION(...)                                                           \
-  do {                                                                         \
-    if (internal)                                                              \
-      internal->section(__VA_ARGS__);                                          \
+#define SECTION(...) \
+  do { \
+    if (internal) \
+      internal->section (__VA_ARGS__); \
   } while (0)
 
-#define VERBOSE(...)                                                           \
-  do {                                                                         \
-    if (internal)                                                              \
-      internal->verbose(__VA_ARGS__);                                          \
+#define VERBOSE(...) \
+  do { \
+    if (internal) \
+      internal->verbose (__VA_ARGS__); \
   } while (0)
 
 #else
 
-#define LINE()                                                                 \
-  do {                                                                         \
+#define LINE() \
+  do { \
   } while (0)
-#define MSG(...)                                                               \
-  do {                                                                         \
+#define MSG(...) \
+  do { \
   } while (0)
-#define PHASE(...)                                                             \
-  do {                                                                         \
+#define PHASE(...) \
+  do { \
   } while (0)
-#define SECTION(...)                                                           \
-  do {                                                                         \
+#define SECTION(...) \
+  do { \
   } while (0)
-#define VERBOSE(...)                                                           \
-  do {                                                                         \
+#define VERBOSE(...) \
+  do { \
   } while (0)
 
 #endif
 
 #define FATAL fatal
-#define WARNING(...) internal->warning(__VA_ARGS__)
+#define WARNING(...) internal->warning (__VA_ARGS__)
 
 /*------------------------------------------------------------------------*/
 

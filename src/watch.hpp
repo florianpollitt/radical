@@ -23,10 +23,10 @@ struct Watch {
   int blit;
   int size;
 
-  Watch(int b, Clause *c) : clause(c), blit(b), size(c->size) {}
-  Watch() {}
+  Watch (int b, Clause *c) : clause (c), blit (b), size (c->size) {}
+  Watch () {}
 
-  bool binary() const { return size == 2; }
+  bool binary () const { return size == 2; }
 };
 
 typedef vector<Watch> Watches; // of one literal
@@ -34,16 +34,16 @@ typedef vector<Watch> Watches; // of one literal
 typedef Watches::iterator watch_iterator;
 typedef Watches::const_iterator const_watch_iterator;
 
-inline void remove_watch(Watches &ws, Clause *clause) {
-  const auto end = ws.end();
-  auto i = ws.begin();
+inline void remove_watch (Watches &ws, Clause *clause) {
+  const auto end = ws.end ();
+  auto i = ws.begin ();
   for (auto j = i; j != end; j++) {
     const Watch &w = *i++ = *j;
     if (w.clause == clause)
       i--;
   }
-  assert(i + 1 == end);
-  ws.resize(i - ws.begin());
+  assert (i + 1 == end);
+  ws.resize (i - ws.begin ());
 }
 
 } // namespace CaDiCaL

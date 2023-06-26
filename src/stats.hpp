@@ -26,16 +26,16 @@ struct Stats {
     int64_t walk;        // propagated during local search
   } propagations;
 
-  int64_t condassinit;   // initial assigned literals
-  int64_t condassirem;   // initial assigned literals for blocked
-  int64_t condassrem;    // remaining assigned literals for blocked
-  int64_t condassvars;   // sum of active variables at initial assignment
-  int64_t condautinit;   // initial literals in autarky part
-  int64_t condautrem;    // remaining literals in autarky part for blocked
-  int64_t condcands;     // globally blocked candidate clauses
-  int64_t condcondinit;  // initial literals in conditional part
-  int64_t condcondrem;   // remaining literals in conditional part for blocked
-  int64_t conditioned;   // globally blocked clauses eliminated
+  int64_t condassinit;  // initial assigned literals
+  int64_t condassirem;  // initial assigned literals for blocked
+  int64_t condassrem;   // remaining assigned literals for blocked
+  int64_t condassvars;  // sum of active variables at initial assignment
+  int64_t condautinit;  // initial literals in autarky part
+  int64_t condautrem;   // remaining literals in autarky part for blocked
+  int64_t condcands;    // globally blocked candidate clauses
+  int64_t condcondinit; // initial literals in conditional part
+  int64_t condcondrem; // remaining literals in conditional part for blocked
+  int64_t conditioned; // globally blocked clauses eliminated
   int64_t conditionings; // globally blocked clause eliminations
   int64_t condprops;     // propagated unassigned literals
 
@@ -132,36 +132,37 @@ struct Stats {
   int64_t deduplicated;   // number of removed duplicated binary clauses
   int64_t deduplications; // number of deduplication phases
   int64_t strengthened;   // number of strengthened clauses
-  int64_t elimotfstr;    // number of on-the-fly strengthened during elimination
-  int64_t subirr;        // number of subsumed irredundant clauses
-  int64_t subred;        // number of subsumed redundant clauses
-  int64_t subtried;      // number of tried subsumptions
-  int64_t subchecks;     // number of pair-wise subsumption checks
+  int64_t
+      elimotfstr;    // number of on-the-fly strengthened during elimination
+  int64_t subirr;    // number of subsumed irredundant clauses
+  int64_t subred;    // number of subsumed redundant clauses
+  int64_t subtried;  // number of tried subsumptions
+  int64_t subchecks; // number of pair-wise subsumption checks
   int64_t subchecks2;    // same but restricted to binary clauses
   int64_t elimotfsub;    // number of on-the-fly subsumed during elimination
   int64_t subsumerounds; // number of subsumption rounds
   int64_t subsumephases; // number of scheduled subsumption phases
   int64_t eagertried;    // number of traversed eager subsumed candidates
-  int64_t eagersub;      // number of eagerly subsumed recently learned clauses
-  int64_t elimres;       // number of resolved clauses in BVE
-  int64_t elimrestried;  // number of tried resolved clauses in BVE
-  int64_t elimrounds;    // number of elimination rounds
-  int64_t elimphases;    // number of scheduled elimination phases
-  int64_t elimcompleted; // number complete elimination procedures
-  int64_t elimtried;     // number of variable elimination attempts
-  int64_t elimsubst;     // number of eliminations through substitutions
-  int64_t elimgates;     // number of gates found during elimination
-  int64_t elimequivs;    // number of equivalences found during elimination
-  int64_t elimands;      // number of AND gates found during elimination
-  int64_t elimites;      // number of ITE gates found during elimination
-  int64_t elimxors;      // number of XOR gates found during elimination
-  int64_t elimbwsub;     // number of eager backward subsumed clauses
-  int64_t elimbwstr;     // number of eager backward strengthened clauses
-  int64_t ternary;       // number of ternary resolution phases
-  int64_t ternres;       // number of ternary resolutions
-  int64_t htrs;          // number of hyper ternary resolvents
-  int64_t htrs2;         // number of binary hyper ternary resolvents
-  int64_t htrs3;         // number of ternary hyper ternary resolvents
+  int64_t eagersub; // number of eagerly subsumed recently learned clauses
+  int64_t elimres;  // number of resolved clauses in BVE
+  int64_t elimrestried;   // number of tried resolved clauses in BVE
+  int64_t elimrounds;     // number of elimination rounds
+  int64_t elimphases;     // number of scheduled elimination phases
+  int64_t elimcompleted;  // number complete elimination procedures
+  int64_t elimtried;      // number of variable elimination attempts
+  int64_t elimsubst;      // number of eliminations through substitutions
+  int64_t elimgates;      // number of gates found during elimination
+  int64_t elimequivs;     // number of equivalences found during elimination
+  int64_t elimands;       // number of AND gates found during elimination
+  int64_t elimites;       // number of ITE gates found during elimination
+  int64_t elimxors;       // number of XOR gates found during elimination
+  int64_t elimbwsub;      // number of eager backward subsumed clauses
+  int64_t elimbwstr;      // number of eager backward strengthened clauses
+  int64_t ternary;        // number of ternary resolution phases
+  int64_t ternres;        // number of ternary resolutions
+  int64_t htrs;           // number of hyper ternary resolvents
+  int64_t htrs2;          // number of binary hyper ternary resolvents
+  int64_t htrs3;          // number of ternary hyper ternary resolvents
   int64_t decompositions; // number of SCC + ELS
   int64_t vivifications;  // number of vivifications
   int64_t vivifychecks;   // checked clauses during vivification
@@ -226,9 +227,9 @@ struct Stats {
   int64_t active;   // number of active variables
   int64_t inactive; // number of inactive variables
 
-  Stats();
+  Stats ();
 
-  void print(Internal *);
+  void print (Internal *);
 };
 
 /*------------------------------------------------------------------------*/

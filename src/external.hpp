@@ -87,9 +87,9 @@ struct External {
 
   Learner *learner;
 
-  void export_learned_empty_clause();
-  void export_learned_unit_clause(int ilit);
-  void export_learned_large_clause(const vector<int> &);
+  void export_learned_empty_clause ();
+  void export_learned_unit_clause (int ilit);
+  void export_learned_large_clause (const vector<int> &);
 
   //----------------------------------------------------------------------//
 
@@ -112,18 +112,18 @@ struct External {
 
   // These two just factor out common sanity (assertion) checking code.
 
-  inline int vidx(int elit) const {
-    assert(elit);
-    assert(elit != INT_MIN);
-    int res = abs(elit);
-    assert(res <= max_var);
+  inline int vidx (int elit) const {
+    assert (elit);
+    assert (elit != INT_MIN);
+    int res = abs (elit);
+    assert (res <= max_var);
     return res;
   }
 
-  inline int vlit(int elit) const {
-    assert(elit);
-    assert(elit != INT_MIN);
-    assert(abs(elit) <= max_var);
+  inline int vlit (int elit) const {
+    assert (elit);
+    assert (elit != INT_MIN);
+    assert (abs (elit) <= max_var);
     return elit;
   }
 
@@ -133,65 +133,65 @@ struct External {
   // extension stack.  They all take internal literals as argument, and map
   // them back to external literals first, before pushing them on the stack.
 
-  void push_zero_on_extension_stack();
+  void push_zero_on_extension_stack ();
 
   // Our general version of extension stacks always pushes a set of witness
   // literals (for variable elimination the literal of the eliminated
   // literal and for blocked clauses the blocking literal) followed by all
   // the clause literals starting with and separated by zero.
   //
-  void push_clause_literal_on_extension_stack(int ilit);
-  void push_witness_literal_on_extension_stack(int ilit);
+  void push_clause_literal_on_extension_stack (int ilit);
+  void push_witness_literal_on_extension_stack (int ilit);
 
-  void push_clause_on_extension_stack(Clause *);
-  void push_clause_on_extension_stack(Clause *, int witness);
-  void push_binary_clause_on_extension_stack(int witness, int other);
+  void push_clause_on_extension_stack (Clause *);
+  void push_clause_on_extension_stack (Clause *, int witness);
+  void push_binary_clause_on_extension_stack (int witness, int other);
 
   // The main 'extend' function which extends an internal assignment to an
   // external assignment using the extension stack (and sets 'extended').
   //
-  void extend();
+  void extend ();
 
   /*----------------------------------------------------------------------*/
 
   // Marking external literals.
 
-  unsigned elit2ulit(int elit) const {
-    assert(elit);
-    assert(elit != INT_MIN);
-    const int idx = abs(elit) - 1;
-    assert(idx <= max_var);
+  unsigned elit2ulit (int elit) const {
+    assert (elit);
+    assert (elit != INT_MIN);
+    const int idx = abs (elit) - 1;
+    assert (idx <= max_var);
     return 2u * idx + (elit < 0);
   }
 
-  bool marked(const vector<bool> &map, int elit) const {
-    const unsigned ulit = elit2ulit(elit);
-    return ulit < map.size() ? map[ulit] : false;
+  bool marked (const vector<bool> &map, int elit) const {
+    const unsigned ulit = elit2ulit (elit);
+    return ulit < map.size () ? map[ulit] : false;
   }
 
-  void mark(vector<bool> &map, int elit) {
-    const unsigned ulit = elit2ulit(elit);
-    if (ulit >= map.size())
-      map.resize(ulit + 1, false);
+  void mark (vector<bool> &map, int elit) {
+    const unsigned ulit = elit2ulit (elit);
+    if (ulit >= map.size ())
+      map.resize (ulit + 1, false);
     map[ulit] = true;
   }
 
-  void unmark(vector<bool> &map, int elit) {
-    const unsigned ulit = elit2ulit(elit);
-    if (ulit < map.size())
+  void unmark (vector<bool> &map, int elit) {
+    const unsigned ulit = elit2ulit (elit);
+    if (ulit < map.size ())
       map[ulit] = false;
   }
 
   /*----------------------------------------------------------------------*/
 
-  void push_external_clause_and_witness_on_extension_stack(
+  void push_external_clause_and_witness_on_extension_stack (
       const vector<int> &clause, const vector<int> &witness);
 
   // Restore a clause, which was pushed on the extension stack.
-  void restore_clause(const vector<int>::const_iterator &begin,
-                      const vector<int>::const_iterator &end);
+  void restore_clause (const vector<int>::const_iterator &begin,
+                       const vector<int>::const_iterator &end);
 
-  void restore_clauses();
+  void restore_clauses ();
 
   /*----------------------------------------------------------------------*/
 
@@ -199,29 +199,29 @@ struct External {
   // internally and implicitly assumed literals).  Passes on freezing and
   // melting to the internal solver, which has separate frozen counters.
 
-  void freeze(int elit);
-  void melt(int elit);
+  void freeze (int elit);
+  void melt (int elit);
 
-  bool frozen(int elit) {
-    assert(elit);
-    assert(elit != INT_MIN);
-    int eidx = abs(elit);
+  bool frozen (int elit) {
+    assert (elit);
+    assert (elit != INT_MIN);
+    int eidx = abs (elit);
     if (eidx > max_var)
       return false;
-    if (eidx >= (int)frozentab.size())
+    if (eidx >= (int) frozentab.size ())
       return false;
     return frozentab[eidx] > 0;
   }
 
   /*----------------------------------------------------------------------*/
 
-  External(Internal *);
-  ~External();
+  External (Internal *);
+  ~External ();
 
-  void enlarge(int new_max_var); // Enlarge allocated 'vsize'.
-  void init(int new_max_var);    // Initialize up-to 'new_max_var'.
+  void enlarge (int new_max_var); // Enlarge allocated 'vsize'.
+  void init (int new_max_var);    // Initialize up-to 'new_max_var'.
 
-  int internalize(int); // Translate external to internal literal.
+  int internalize (int); // Translate external to internal literal.
 
   /*----------------------------------------------------------------------*/
 
@@ -234,39 +234,39 @@ struct External {
   // As a consequence 'reset_assumptions' is only called from
   // 'transition_to_unknown_state' in API calls in 'solver.cpp'.
 
-  void reset_assumptions();
+  void reset_assumptions ();
 
   // Similarly a valid external assignment obtained through 'extend' has to
   // be reset at each point it risks to become invalid.  This is done
   // in the external layer in 'external.cpp' functions..
 
-  void reset_extended();
+  void reset_extended ();
 
   // Finally, the semantics of incremental solving also require that limits
   // are only valid for the next 'solve' call.  Since the limits can not
   // really be queried, handling them is less complex and they are just
   // reset immediately at the end of 'External::solve'.
 
-  void reset_limits();
+  void reset_limits ();
 
   /*----------------------------------------------------------------------*/
 
   // Proxies to IPASIR functions.
 
-  void add(int elit);
-  void assume(int elit);
-  int solve(bool preprocess_only);
+  void add (int elit);
+  void assume (int elit);
+  int solve (bool preprocess_only);
 
   // We call it 'ival' as abbreviation for 'val' with 'int' return type to
   // avoid bugs due to using 'signed char tmp = val (lit)', which might turn
   // a negative value into a positive one (happened in 'extend').
   //
-  inline int ival(int elit) const {
-    assert(elit != INT_MIN);
-    int eidx = abs(elit), res;
+  inline int ival (int elit) const {
+    assert (elit != INT_MIN);
+    int eidx = abs (elit), res;
     if (eidx > max_var)
       res = -1;
-    else if ((size_t)eidx >= vals.size())
+    else if ((size_t) eidx >= vals.size ())
       res = -1;
     else
       res = vals[eidx] ? eidx : -eidx;
@@ -275,9 +275,9 @@ struct External {
     return res;
   }
 
-  bool failed(int elit);
+  bool failed (int elit);
 
-  void terminate();
+  void terminate ();
 
   // Other important non IPASIR functions.
 
@@ -285,96 +285,96 @@ struct External {
 
   // Add literal to external constraint.
   //
-  void constrain(int elit);
+  void constrain (int elit);
 
   // Returns true if 'solve' returned 20 because of the constraint.
   //
-  bool failed_constraint();
+  bool failed_constraint ();
 
   // Deletes the current constraint clause. Called on
   // 'transition_to_unknown_state' and if a new constraint is added. Can be
   // called directly using the API.
   //
-  void reset_constraint();
+  void reset_constraint ();
 
   /*----------------------------------------------------------------------*/
 
-  int lookahead();
-  CaDiCaL::CubesWithStatus generate_cubes(int, int);
+  int lookahead ();
+  CaDiCaL::CubesWithStatus generate_cubes (int, int);
 
-  int fixed(int elit) const; // Implemented in 'internal.hpp'.
+  int fixed (int elit) const; // Implemented in 'internal.hpp'.
 
   /*----------------------------------------------------------------------*/
 
-  void phase(int elit);
-  void unphase(int elit);
+  void phase (int elit);
+  void unphase (int elit);
 
   /*----------------------------------------------------------------------*/
 
   // Traversal functions for the witness stack and units.  The explanation
   // in 'external.cpp' for why we have to distinguish these cases.
 
-  bool traverse_all_frozen_units_as_clauses(ClauseIterator &);
-  bool traverse_all_non_frozen_units_as_witnesses(WitnessIterator &);
-  bool traverse_witnesses_backward(WitnessIterator &);
-  bool traverse_witnesses_forward(WitnessIterator &);
+  bool traverse_all_frozen_units_as_clauses (ClauseIterator &);
+  bool traverse_all_non_frozen_units_as_witnesses (WitnessIterator &);
+  bool traverse_witnesses_backward (WitnessIterator &);
+  bool traverse_witnesses_forward (WitnessIterator &);
 
   /*----------------------------------------------------------------------*/
 
   // Copy flags for determining preprocessing state.
 
-  void copy_flags(External &other) const;
+  void copy_flags (External &other) const;
 
   /*----------------------------------------------------------------------*/
 
   // Check solver behaves as expected during testing and debugging.
 
-  void check_assumptions_satisfied();
-  void check_constraint_satisfied();
-  void check_failing();
+  void check_assumptions_satisfied ();
+  void check_constraint_satisfied ();
+  void check_failing ();
 
-  void check_solution_on_learned_clause();
-  void check_solution_on_shrunken_clause(Clause *);
-  void check_solution_on_learned_unit_clause(int unit);
-  void check_no_solution_after_learning_empty_clause();
+  void check_solution_on_learned_clause ();
+  void check_solution_on_shrunken_clause (Clause *);
+  void check_solution_on_learned_unit_clause (int unit);
+  void check_no_solution_after_learning_empty_clause ();
 
-  void check_learned_empty_clause() {
+  void check_learned_empty_clause () {
     if (solution)
-      check_no_solution_after_learning_empty_clause();
+      check_no_solution_after_learning_empty_clause ();
   }
 
-  void check_learned_unit_clause(int unit) {
+  void check_learned_unit_clause (int unit) {
     if (solution)
-      check_solution_on_learned_unit_clause(unit);
+      check_solution_on_learned_unit_clause (unit);
   }
 
-  void check_learned_clause() {
+  void check_learned_clause () {
     if (solution)
-      check_solution_on_learned_clause();
+      check_solution_on_learned_clause ();
   }
 
-  void check_shrunken_clause(Clause *c) {
+  void check_shrunken_clause (Clause *c) {
     if (solution)
-      check_solution_on_shrunken_clause(c);
+      check_solution_on_shrunken_clause (c);
   }
 
-  void check_assignment(int (External::*assignment)(int) const);
+  void check_assignment (int (External::*assignment) (int) const);
 
-  void check_satisfiable();
-  void check_unsatisfiable();
+  void check_satisfiable ();
+  void check_unsatisfiable ();
 
-  void check_solve_result(int res);
+  void check_solve_result (int res);
 
-  void update_molten_literals();
+  void update_molten_literals ();
 
   /*----------------------------------------------------------------------*/
 
   // For debugging and testing only.  See 'solution.hpp' for more details.
   //
-  inline int sol(int elit) const {
-    assert(solution);
-    assert(elit != INT_MIN);
-    int eidx = abs(elit);
+  inline int sol (int elit) const {
+    assert (solution);
+    assert (elit != INT_MIN);
+    int eidx = abs (elit);
     if (eidx > max_var)
       return 0;
     int res = solution[eidx];

@@ -27,62 +27,66 @@ template <class C> class heap {
 
   // Map an element to its position entry in the 'pos' map.
   //
-  unsigned &index(unsigned e) {
-    if (e >= pos.size())
-      pos.resize(1 + (size_t)e, invalid_heap_position);
+  unsigned &index (unsigned e) {
+    if (e >= pos.size ())
+      pos.resize (1 + (size_t) e, invalid_heap_position);
     unsigned &res = pos[e];
-    assert(res == invalid_heap_position || (size_t)res < array.size());
+    assert (res == invalid_heap_position || (size_t) res < array.size ());
     return res;
   }
 
-  bool has_parent(unsigned e) { return index(e) > 0; }
-  bool has_left(unsigned e) { return (size_t)2 * index(e) + 1 < size(); }
-  bool has_right(unsigned e) { return (size_t)2 * index(e) + 2 < size(); }
-
-  unsigned parent(unsigned e) {
-    assert(has_parent(e));
-    return array[(index(e) - 1) / 2];
+  bool has_parent (unsigned e) { return index (e) > 0; }
+  bool has_left (unsigned e) {
+    return (size_t) 2 * index (e) + 1 < size ();
+  }
+  bool has_right (unsigned e) {
+    return (size_t) 2 * index (e) + 2 < size ();
   }
 
-  unsigned left(unsigned e) {
-    assert(has_left(e));
-    return array[2 * index(e) + 1];
+  unsigned parent (unsigned e) {
+    assert (has_parent (e));
+    return array[(index (e) - 1) / 2];
   }
 
-  unsigned right(unsigned e) {
-    assert(has_right(e));
-    return array[2 * index(e) + 2];
+  unsigned left (unsigned e) {
+    assert (has_left (e));
+    return array[2 * index (e) + 1];
+  }
+
+  unsigned right (unsigned e) {
+    assert (has_right (e));
+    return array[2 * index (e) + 2];
   }
 
   // Exchange elements 'a' and 'b' in 'array' and fix their positions.
   //
-  void exchange(unsigned a, unsigned b) {
-    unsigned &i = index(a), &j = index(b);
-    swap(array[i], array[j]);
-    swap(i, j);
+  void exchange (unsigned a, unsigned b) {
+    unsigned &i = index (a), &j = index (b);
+    swap (array[i], array[j]);
+    swap (i, j);
   }
 
   // Bubble up an element as far as necessary.
   //
-  void up(unsigned e) {
+  void up (unsigned e) {
     unsigned p;
-    while (has_parent(e) && less((p = parent(e)), e))
-      exchange(p, e);
+    while (has_parent (e) && less ((p = parent (e)), e))
+      exchange (p, e);
   }
 
   // Bubble down an element as far as necessary.
   //
-  void down(unsigned e) {
-    while (has_left(e)) {
-      unsigned c = left(e);
-      if (has_right(e)) {
-        unsigned r = right(e);
-        if (less(c, r))
+  void down (unsigned e) {
+    while (has_left (e)) {
+      unsigned c = left (e);
+      if (has_right (e)) {
+        unsigned r = right (e);
+        if (less (c, r))
           c = r;
       }
-      if (!less(e, c))
+      if (!less (e, c))
         break;
-      exchange(e, c);
+      exchange (e, c);
     }
   }
 
@@ -91,7 +95,7 @@ template <class C> class heap {
   // 'less' and as well of course bugs in this heap implementation.  It
   // should be enabled during testing applications of the heap.
   //
-  void check() {
+  void check () {
 #if 0 // EXPENSIVE HEAP CHECKING IF ENABLED
 #warning "expensive checking in heap enabled"
     assert (array.size () <= invalid_heap_position);
@@ -114,91 +118,91 @@ template <class C> class heap {
   }
 
 public:
-  heap(const C &c) : less(c) {}
+  heap (const C &c) : less (c) {}
 
   // Number of elements in the heap.
   //
-  size_t size() const { return array.size(); }
+  size_t size () const { return array.size (); }
 
   // Check if no more elements are in the heap.
   //
-  bool empty() const { return array.empty(); }
+  bool empty () const { return array.empty (); }
 
   // Check whether 'e' is already in the heap.
   //
-  bool contains(unsigned e) const {
-    if ((size_t)e >= pos.size())
+  bool contains (unsigned e) const {
+    if ((size_t) e >= pos.size ())
       return false;
     return pos[e] != invalid_heap_position;
   }
 
   // Add a new (not contained) element 'e' to the heap.
   //
-  void push_back(unsigned e) {
-    assert(!contains(e));
-    size_t i = array.size();
-    assert(i < (size_t)invalid_heap_position);
-    array.push_back(e);
-    index(e) = (unsigned)i;
-    up(e);
-    down(e);
-    check();
+  void push_back (unsigned e) {
+    assert (!contains (e));
+    size_t i = array.size ();
+    assert (i < (size_t) invalid_heap_position);
+    array.push_back (e);
+    index (e) = (unsigned) i;
+    up (e);
+    down (e);
+    check ();
   }
 
   // Returns the maximum element in the heap.
   //
-  unsigned front() const {
-    assert(!empty());
+  unsigned front () const {
+    assert (!empty ());
     return array[0];
   }
 
   // Removes the maximum element in the heap.
   //
-  unsigned pop_front() {
-    assert(!empty());
-    unsigned res = array[0], last = array.back();
-    if (size() > 1)
-      exchange(res, last);
-    index(res) = invalid_heap_position;
-    array.pop_back();
-    if (size() > 1)
-      down(last);
-    check();
+  unsigned pop_front () {
+    assert (!empty ());
+    unsigned res = array[0], last = array.back ();
+    if (size () > 1)
+      exchange (res, last);
+    index (res) = invalid_heap_position;
+    array.pop_back ();
+    if (size () > 1)
+      down (last);
+    check ();
     return res;
   }
 
   // Notify the heap, that evaluation of 'less' has changed for 'e'.
   //
-  void update(unsigned e) {
-    assert(contains(e));
-    up(e);
-    down(e);
-    check();
+  void update (unsigned e) {
+    assert (contains (e));
+    up (e);
+    down (e);
+    check ();
   }
 
-  void clear() {
-    array.clear();
-    pos.clear();
+  void clear () {
+    array.clear ();
+    pos.clear ();
   }
 
-  void erase() {
-    erase_vector(array);
-    erase_vector(pos);
+  void erase () {
+    erase_vector (array);
+    erase_vector (pos);
   }
 
-  void shrink() {
-    shrink_vector(array);
-    shrink_vector(pos);
+  void shrink () {
+    shrink_vector (array);
+    shrink_vector (pos);
   }
 
   // Standard iterators 'inherited' from 'vector'.
   //
   typedef typename vector<unsigned>::iterator iterator;
   typedef typename vector<unsigned>::const_iterator const_iterator;
-  iterator begin() { return array.begin(); }
-  iterator end() { return array.end(); }
-  const_iterator begin() const { return array.begin(); }
-  const_iterator end() const { return array.end(); }
+  iterator begin () { return array.begin (); }
+  iterator end () { return array.end (); }
+  const_iterator begin () const { return array.begin (); }
+  const_iterator end () const { return array.end (); }
 };
 
 } // namespace CaDiCaL

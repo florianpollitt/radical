@@ -17,20 +17,20 @@ namespace CaDiCaL {
 // '1' as well as '2' both occur positively as well as negatively and none
 // of them nor their negation is considered as probe
 
-void Internal::mark_duplicated_binary_clauses_as_garbage() {
+void Internal::mark_duplicated_binary_clauses_as_garbage () {
 
   if (!opts.deduplicate)
     return;
   if (unsat)
     return;
-  if (terminated_asynchronously())
+  if (terminated_asynchronously ())
     return;
 
-  START_SIMPLIFIER(deduplicate, DEDUP);
+  START_SIMPLIFIER (deduplicate, DEDUP);
   stats.deduplications++;
 
-  assert(!level);
-  assert(watching());
+  assert (!level);
+  assert (watching ());
 
   vector<int> stack; // To save marked literals and unmark them later.
 
@@ -41,7 +41,7 @@ void Internal::mark_duplicated_binary_clauses_as_garbage() {
 
     if (unsat)
       break;
-    if (!active(idx))
+    if (!active (idx))
       continue;
     int unit = 0;
 
@@ -49,21 +49,21 @@ void Internal::mark_duplicated_binary_clauses_as_garbage() {
 
       const int lit = sign * idx; // Consider all literals.
 
-      assert(stack.empty());
-      Watches &ws = watches(lit);
+      assert (stack.empty ());
+      Watches &ws = watches (lit);
 
       // We are removing references to garbage clause. Thus no 'auto'.
 
-      const const_watch_iterator end = ws.end();
-      watch_iterator j = ws.begin();
+      const const_watch_iterator end = ws.end ();
+      watch_iterator j = ws.begin ();
       const_watch_iterator i;
 
       for (i = j; !unit && i != end; i++) {
         Watch w = *j++ = *i;
-        if (!w.binary())
+        if (!w.binary ())
           continue;
         int other = w.blit;
-        const int tmp = marked(other);
+        const int tmp = marked (other);
         Clause *c = w.clause;
 
         if (tmp > 0) { // Found duplicated binary clause.
@@ -72,7 +72,7 @@ void Internal::mark_duplicated_binary_clauses_as_garbage() {
             j--;
             continue;
           }
-          LOG(c, "found duplicated");
+          LOG (c, "found duplicated");
 
           // The previous identical clause 'd' might be redundant and if the
           // second clause 'c' is not (so irredundant), then we have to keep
@@ -80,9 +80,9 @@ void Internal::mark_duplicated_binary_clauses_as_garbage() {
 
           if (!c->redundant) {
             watch_iterator k;
-            for (k = ws.begin();; k++) {
-              assert(k != i);
-              if (!k->binary())
+            for (k = ws.begin ();; k++) {
+              assert (k != i);
+              if (!k->binary ())
                 continue;
               if (k->blit != other)
                 continue;
@@ -95,54 +95,54 @@ void Internal::mark_duplicated_binary_clauses_as_garbage() {
             *k = w;
           }
 
-          LOG(c, "mark garbage duplicated");
+          LOG (c, "mark garbage duplicated");
           stats.subsumed++;
           stats.deduplicated++;
           subsumed++;
-          mark_garbage(c);
+          mark_garbage (c);
           j--;
 
         } else if (tmp < 0) { // Hyper unary resolution.
 
-          LOG("found %d %d and %d %d which produces unit %d", lit, -other, lit,
-              other, lit);
+          LOG ("found %d %d and %d %d which produces unit %d", lit, -other,
+               lit, other, lit);
           unit = lit;
           if (opts.lrat && !opts.lratexternal) {
             // taken from fradical
-            assert(lrat_chain.empty());
-            lrat_chain.push_back(c->id);
-            // We've forgotten where the other binary clause is, so go find it
-            // again
-            for (watch_iterator k = ws.begin();; k++) {
-              assert(k != i);
-              if (!k->binary())
+            assert (lrat_chain.empty ());
+            lrat_chain.push_back (c->id);
+            // We've forgotten where the other binary clause is, so go find
+            // it again
+            for (watch_iterator k = ws.begin ();; k++) {
+              assert (k != i);
+              if (!k->binary ())
                 continue;
               if (k->blit != -other)
                 continue;
-              lrat_chain.push_back(k->clause->id);
+              lrat_chain.push_back (k->clause->id);
               break;
             }
           }
-          j = ws.begin(); // Flush 'ws'.
+          j = ws.begin (); // Flush 'ws'.
           units++;
 
         } else {
           if (c->garbage)
             continue;
-          mark(other);
-          stack.push_back(other);
+          mark (other);
+          stack.push_back (other);
         }
       }
 
-      if (j == ws.begin())
-        erase_vector(ws);
+      if (j == ws.begin ())
+        erase_vector (ws);
       else if (j != end)
-        ws.resize(j - ws.begin()); // Shrink watchers.
+        ws.resize (j - ws.begin ()); // Shrink watchers.
 
       for (const auto &other : stack)
-        unmark(other);
+        unmark (other);
 
-      stack.clear();
+      stack.clear ();
     }
 
     // Propagation potentially messes up the watches and thus we can not
@@ -153,18 +153,18 @@ void Internal::mark_duplicated_binary_clauses_as_garbage() {
 
       stats.failed++;
       stats.hyperunary++;
-      assign_unit(unit);
+      assign_unit (unit);
       // lrat_chain.clear ();   done in search_assign
 
-      if (!propagate()) {
-        LOG("empty clause after propagating unit");
-        learn_empty_clause();
+      if (!propagate ()) {
+        LOG ("empty clause after propagating unit");
+        learn_empty_clause ();
       }
     }
   }
-  STOP_SIMPLIFIER(deduplicate, DEDUP);
+  STOP_SIMPLIFIER (deduplicate, DEDUP);
 
-  report('2', !opts.reportall && !(subsumed + units));
+  report ('2', !opts.reportall && !(subsumed + units));
 }
 
 } // namespace CaDiCaL

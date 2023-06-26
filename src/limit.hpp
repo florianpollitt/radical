@@ -40,7 +40,7 @@ struct Limit {
     int forced; // forced termination for testing
   } terminate;
 
-  Limit();
+  Limit ();
 };
 
 struct Last {
@@ -62,7 +62,7 @@ struct Last {
   struct {
     int64_t fixed;
   } collect;
-  Last();
+  Last ();
 };
 
 struct Inc {
@@ -72,7 +72,7 @@ struct Inc {
   int64_t decisions;     // next decision limit if non-negative
   int64_t preprocessing; // next preprocessing limit if non-negative
   int64_t localsearch;   // next local search limit if non-negative
-  Inc();
+  Inc ();
 };
 
 } // namespace CaDiCaL

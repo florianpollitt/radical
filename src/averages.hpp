@@ -27,7 +27,7 @@ struct Averages {
 
   } current, saved;
 
-  Averages() : swapped(0) {}
+  Averages () : swapped (0) {}
 };
 
 } // namespace CaDiCaL
