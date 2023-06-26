@@ -182,7 +182,6 @@ void Internal::failing () {
   }
 
   {
-    size_t next = 0;
 
     // used for unsat_constraint lrat
     vector<vector<uint64_t>> constraint_chains;

@@ -102,19 +102,21 @@ void Proof::add_original_clause (uint64_t id, const vector<int> &c) {
   add_original_clause ();
 }
 
-void Proof::add_external_original_clause (const vector<int> &c) {
+void Proof::add_external_original_clause (uint64_t id, const vector<int> &c) {
   // literals of c are already external
   assert (clause.empty ());
   for (auto const &lit : c)
     clause.push_back (lit);
+  clause_id = id;
   add_original_clause ();
 }
 
-void Proof::delete_external_original_clause (const vector<int> &c) {
+void Proof::delete_external_original_clause (uint64_t id, const vector<int> &c) {
   // literals of c are already external
   assert (clause.empty ());
   for (auto const &lit : c)
     clause.push_back (lit);
+  clause_id = id;
   delete_clause ();
 }
 
@@ -314,6 +316,37 @@ void Proof::strengthen_clause (Clause *c, int remove,
     proof_chain.push_back (cid);
   add_derived_clause ();
   delete_clause (c);
+  c->id = id;
+}
+
+void Proof::otfs_strengthen_clause (Clause *c, const std::vector<int> &old) {
+  LOG (c, "PROOF otfs strengthen");
+  assert (clause.empty ());
+  for (int i = 0; i < c->size; i++) {
+    int internal_lit = c->literals[i];
+    add_literal (internal_lit);
+  }
+  int64_t id = ++internal->clause_id;
+  clause_id = id;
+  add_derived_clause ();
+  delete_clause (c->id, old);
+  c->id = id;
+}
+
+void Proof::otfs_strengthen_clause (Clause *c, const std::vector<int> &old,
+                                        const vector<uint64_t> &chain) {
+  LOG (c, "PROOF otfs strengthen");
+  assert (clause.empty ());
+  for (int i = 0; i < c->size; i++) {
+    int internal_lit = c->literals[i];
+    add_literal (internal_lit);
+  }
+  int64_t id = ++internal->clause_id;
+  clause_id = id;
+  for (const auto &cid : chain)
+    proof_chain.push_back (cid);
+  add_derived_clause ();
+  delete_clause (c->id, old);
   c->id = id;
 }
 

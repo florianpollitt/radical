@@ -770,21 +770,25 @@ inline void Internal::otfs_subsume_clause (Clause *subsuming,
 /*------------------------------------------------------------------------*/
 
 // Candidate clause 'c' is strengthened by removing 'lit'.
-
+//
 void Internal::otfs_strengthen_clause (Clause *c, int lit, int new_size,
                                        const std::vector<int> &old) {
   stats.strengthened++;
   assert (c->size > 2);
   (void) shrink_clause (c, new_size);
-  if (proof)
-    proof->add_derived_clause (c);
-  if (!c->redundant)
+  if (proof) {
+    if (opts.lrat && !opts.lratexternal) {
+      proof->otfs_strengthen_clause (c, old, lrat_chain);
+    }
+    else
+      proof->otfs_strengthen_clause (c, old);
+  }
+  if (!c->redundant) {
     mark_removed (lit);
+  }
   c->used = true;
   LOG (c, "strengthened");
   external->check_shrunken_clause (c);
-  if (proof)
-    proof->delete_clause (old);
 }
 
 /*------------------------------------------------------------------------*/

@@ -58,8 +58,8 @@ public:
   //  external literals (from external->eclause)
   // TODO: add ids...
   //
-  void add_external_original_clause (const vector<int> &);
-  void delete_external_original_clause (const vector<int> &);
+  void add_external_original_clause (uint64_t, const vector<int> &);
+  void delete_external_original_clause (uint64_t, const vector<int> &);
 
   // Add derived (such as learned) clauses to the proof.
   //
@@ -88,6 +88,8 @@ public:
   void flush_clause (Clause *);           // remove falsified literals
   void strengthen_clause (Clause *, int); // remove second argument
   void strengthen_clause (Clause *, int, const vector<uint64_t> &);
+  void otfs_strengthen_clause (Clause *, const vector<int> &, const vector<uint64_t> &);
+  void otfs_strengthen_clause (Clause *, const vector<int> &);
 
   void flush ();
 };
