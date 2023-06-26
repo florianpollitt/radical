@@ -70,10 +70,6 @@ bool Config::set(Options &opts, const char *name) {
     opts.disable_preprocessing();
     return true;
   }
-  if (!strcmp(name, "lratplain")) {
-    opts.disable_non_lrat();
-    return true;
-  }
 #define CONFIG(N, D)                                                           \
   do {                                                                         \
     if (strcmp(name, #N))                                                      \
