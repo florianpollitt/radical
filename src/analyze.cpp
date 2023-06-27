@@ -672,18 +672,21 @@ void Internal::eagerly_subsume_recently_learned_clauses (Clause *c) {
 /*------------------------------------------------------------------------*/
 
 Clause *Internal::on_the_fly_strengthen (Clause *conflict, int uip) {
+  assert (conflict);
+  assert (conflict->size > 2);
+  LOG (conflict, "applying OTFS on lit %d", uip);
   auto sorted = std::vector<int> ();
   sorted.reserve (conflict->size);
   assert (sorted.empty ());
-  LOG (conflict, "applying OTFS on lit %d", uip);
-  assert (conflict->size > 2);
-  assert (conflict);
   ++stats.otfs.strengthened;
 
   int *lits = conflict->literals;
 
   assert (lits[0] == uip || lits[1] == uip);
   const int other_init = lits[0] ^ lits[1] ^ uip;
+
+  assert (mini_chain.empty ());
+  // TODO: add all unit_ids to mini_chain...
 
   const int old_size = conflict->size;
   int new_size = 0;
@@ -692,6 +695,9 @@ Clause *Internal::on_the_fly_strengthen (Clause *conflict, int uip) {
     sorted.push_back (other);
     if (var (other).level)
       lits[new_size++] = other;
+    else if (opts.lrat && !opts.lratexternal) {
+      
+    }
   }
 
   LOG (conflict, "removing all units ");
@@ -706,6 +712,7 @@ Clause *Internal::on_the_fly_strengthen (Clause *conflict, int uip) {
     remove_watch (watches (other_init), conflict);
   remove_watch (watches (uip), conflict);
 
+  assert (!opts.lrat || opts.lratexternal || lrat_chain.back () == conflict->id);
   // sort the clause
   {
     int highest_pos = 0;
@@ -728,6 +735,9 @@ Clause *Internal::on_the_fly_strengthen (Clause *conflict, int uip) {
     otfs_strengthen_clause (conflict, uip, new_size, sorted);
     assert (new_size == conflict->size);
   }
+  assert (!opts.lrat || opts.lratfrat ||
+          (proof && lrat_chain.back () != conflict->id) ||
+           lrat_chain.back () == conflict->id);
 
   if (other_init != other)
     watch_literal (other, lits[1], conflict);
@@ -778,7 +788,7 @@ void Internal::otfs_strengthen_clause (Clause *c, int lit, int new_size,
   (void) shrink_clause (c, new_size);
   if (proof) {
     if (opts.lrat && !opts.lratexternal) {
-      proof->otfs_strengthen_clause (c, old, lrat_chain);
+      proof->otfs_strengthen_clause (c, old, mini_chain);
     }
     else
       proof->otfs_strengthen_clause (c, old);
@@ -786,6 +796,7 @@ void Internal::otfs_strengthen_clause (Clause *c, int lit, int new_size,
   if (!c->redundant) {
     mark_removed (lit);
   }
+  mini_chain.clear ();
   c->used = true;
   LOG (c, "strengthened");
   external->check_shrunken_clause (c);
