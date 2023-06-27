@@ -220,6 +220,7 @@ struct Internal {
   vector<int> original;     // original added literals
   vector<int> levels;       // decision levels in learned clause
   vector<int> analyzed;     // analyzed literals in 'analyze'
+  vector<int> unit_analyzed;// to avoid duplicate units in lrat_chain
   vector<int> decomposed;   // literals skipped in 'decompose'
   vector<int> minimized;    // removable or poison in 'minimize'
   vector<int> shrinkable;   // removable or poison in 'shrink'
@@ -600,6 +601,7 @@ struct Internal {
   void bump_variables ();
   int recompute_glue (Clause *);
   void bump_clause (Clause *);
+  void clear_unit_analyzed_literals ();
   void clear_analyzed_literals ();
   void clear_analyzed_levels ();
   void clear_minimized_literals ();

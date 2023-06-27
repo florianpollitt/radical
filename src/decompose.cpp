@@ -580,10 +580,10 @@ bool Internal::decompose_round () {
       } else if (likely_to_be_kept_clause (c))
         mark_added (c);
       // we have assert (c->size > 2)
-      // if (c->size == 2) { // cheaper to update only new binary clauses
-      //  update_watch_size (watches (c->literals[0]), c->literals[1], c);
-      //  update_watch_size (watches (c->literals[1]), c->literals[0], c);
-      // }
+      if (c->size == 2) { // cheaper to update only new binary clauses
+       update_watch_size (watches (c->literals[0]), c->literals[1], c);
+       update_watch_size (watches (c->literals[1]), c->literals[0], c);
+      }
       LOG (c, "substituted");
     }
     while (!clause.empty ()) {

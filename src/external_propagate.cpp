@@ -448,6 +448,7 @@ Clause *Internal::add_external_clause (bool as_redundant,
       else
         MSG ("falsified clause is learnt from external propagator");
       unsat = true;
+      conflict_id = id;
     } else {
       assert (clause.size () == 1);
       LOG (clause, "unit clause is learnt from external propagator");
@@ -688,7 +689,7 @@ bool Internal::handle_external_clause (Clause *res) {
         stats.ext_prop.elearn_prop++;
         if (level)
           backtrack ();
-        const uint64_t id =  ++clause_id;
+        const uint64_t id = clause_id;
         assign_original_unit (id, clause[0]);
         clause.clear ();
 
@@ -811,8 +812,10 @@ bool Internal::external_check_solution () {
       else
         etrail.push_back (-i);
 #ifndef NDEBUG
+#ifdef LOGGING
       bool p = external->vals[i];
       LOG ("evals[%d]: %d ival(%d): %d", i, p, i, tmp);
+#endif
 #endif
     }
 
