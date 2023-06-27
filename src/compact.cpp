@@ -412,7 +412,7 @@ void Internal::compact () {
       assert (!ilit == !elit);
       if (elit < 0)
         ilit = -ilit;
-      LOG ("re adding lit extrenal %d internal %d to constraint", elit,
+      LOG ("re adding lit external %d internal %d to constraint", elit,
            ilit);
       constrain (ilit);
     }

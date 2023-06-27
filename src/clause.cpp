@@ -382,7 +382,7 @@ void Internal::add_new_original_clause (uint64_t id) {
   }
   if (skip) {
     if (proof)
-      proof->delete_external_original_clause (id, external->eclause);
+      proof->delete_clause (id, original);
   } else {
     uint64_t new_id = id;
     size_t size = clause.size ();
@@ -395,7 +395,7 @@ void Internal::add_new_original_clause (uint64_t id) {
           proof->add_derived_clause (new_id, clause, lrat_chain);
         } else
           proof->add_derived_clause (new_id, clause);
-        proof->delete_external_original_clause (id, external->eclause);
+        proof->delete_clause (id, original);
       }
     }
     lrat_chain.clear ();
