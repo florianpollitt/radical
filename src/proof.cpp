@@ -30,7 +30,7 @@ void Internal::build_full_lrat () {
 void Internal::trace (File *file) {
   assert (!tracer);
   new_proof_on_demand ();
-  tracer = new Tracer (this, file, opts.binary, opts.lrat, opts.lratfrat);
+  tracer = new Tracer (this, file, opts.binary, opts.lrat, opts.lratfrat, opts.lratveripb);
   LOG ("PROOF connecting proof tracer");
   proof->connect (tracer);
 }
@@ -45,11 +45,10 @@ void Internal::check () {
     lratchecker = new LratChecker (this);
     LOG ("PROOF connecting lrat proof checker");
     proof->connect (lratchecker);
-  } else {
-    checker = new Checker (this);
-    LOG ("PROOF connecting proof checker");
-    proof->connect (checker);
   }
+  checker = new Checker (this);
+  LOG ("PROOF connecting proof checker");
+  proof->connect (checker);
 }
 
 // We want to close a proof trace and stop checking as soon we are done.
@@ -102,7 +101,8 @@ void Proof::add_original_clause (uint64_t id, const vector<int> &c) {
   add_original_clause ();
 }
 
-void Proof::add_external_original_clause (uint64_t id, const vector<int> &c) {
+void Proof::add_external_original_clause (uint64_t id,
+                                          const vector<int> &c) {
   // literals of c are already external
   assert (clause.empty ());
   for (auto const &lit : c)
@@ -111,7 +111,8 @@ void Proof::add_external_original_clause (uint64_t id, const vector<int> &c) {
   add_original_clause ();
 }
 
-void Proof::delete_external_original_clause (uint64_t id, const vector<int> &c) {
+void Proof::delete_external_original_clause (uint64_t id,
+                                             const vector<int> &c) {
   // literals of c are already external
   assert (clause.empty ());
   for (auto const &lit : c)
@@ -319,7 +320,8 @@ void Proof::strengthen_clause (Clause *c, int remove,
   c->id = id;
 }
 
-void Proof::otfs_strengthen_clause (Clause *c, const std::vector<int> &old) {
+void Proof::otfs_strengthen_clause (Clause *c,
+                                    const std::vector<int> &old) {
   LOG (c, "PROOF otfs strengthen");
   assert (clause.empty ());
   for (int i = 0; i < c->size; i++) {
@@ -334,7 +336,7 @@ void Proof::otfs_strengthen_clause (Clause *c, const std::vector<int> &old) {
 }
 
 void Proof::otfs_strengthen_clause (Clause *c, const std::vector<int> &old,
-                                        const vector<uint64_t> &chain) {
+                                    const vector<uint64_t> &chain) {
   LOG (c, "PROOF otfs strengthen");
   assert (clause.empty ());
   for (int i = 0; i < c->size; i++) {
@@ -371,8 +373,6 @@ void Proof::add_original_clause () {
 void Proof::add_derived_clause () {
   LOG (clause, "PROOF adding derived external clause");
   assert (clause_id);
-  assert (!internal->opts.lrat || internal->opts.lratexternal ||
-          !proof_chain.empty ());
 
   if (lratbuilder) {
     if (proof_chain.empty ())
@@ -381,7 +381,7 @@ void Proof::add_derived_clause () {
       lratbuilder->add_derived_clause (clause_id, clause);
   }
   if (lratchecker) {
-    if (proof_chain.empty ())
+    if (!internal->opts.lrat)
       lratchecker->add_derived_clause (clause_id, clause);
     else
       lratchecker->add_derived_clause (clause_id, clause, proof_chain);

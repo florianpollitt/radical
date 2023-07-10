@@ -66,12 +66,12 @@ void Internal::decompose_conflicting_scc_lrat (DFS *dfs, vector<int> &scc) {
     f.seen = true;
     analyzed.push_back (lit);
     decompose_analyze_binary_chain (dfs, lit);
-    for (auto p = mini_chain.rbegin (); p < mini_chain.rend (); p++) {
+    for (auto p = mini_chain.rbegin (); p != mini_chain.rend (); p++) {
       lrat_chain.push_back (*p);
     }
     /*
     if (back)
-      for (auto p = mini_chain.rbegin (); p < mini_chain.rend (); p++) {
+      for (auto p = mini_chain.rbegin (); p != mini_chain.rend (); p++) {
         lrat_chain.push_back (*p);
       }
     else
@@ -117,7 +117,7 @@ void Internal::decompose_analyze_lrat (DFS *dfs, Clause *reason) {
     }
     assert (mini_chain.empty ());
     decompose_analyze_binary_chain (dfs, other);
-    for (auto p = mini_chain.rbegin (); p < mini_chain.rend (); p++) {
+    for (auto p = mini_chain.rbegin (); p != mini_chain.rend (); p++) {
       lrat_chain.push_back (*p);
     }
     mini_chain.clear ();
@@ -581,8 +581,8 @@ bool Internal::decompose_round () {
         mark_added (c);
       // we have assert (c->size > 2)
       if (c->size == 2) { // cheaper to update only new binary clauses
-       update_watch_size (watches (c->literals[0]), c->literals[1], c);
-       update_watch_size (watches (c->literals[1]), c->literals[0], c);
+        update_watch_size (watches (c->literals[0]), c->literals[1], c);
+        update_watch_size (watches (c->literals[1]), c->literals[0], c);
       }
       LOG (c, "substituted");
     }
