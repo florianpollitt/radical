@@ -1249,8 +1249,8 @@ bool Internal::propagate_clean() {
 
       // The trail before the current decision level was conflict free.
       // num_assigned; //
-      if (level)
-        no_conflict_until = trails_sizes (level-1);
+      // if (level)
+        // no_conflict_until = trails_sizes (level-1);
     }
   }
 

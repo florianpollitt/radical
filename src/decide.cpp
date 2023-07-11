@@ -78,6 +78,9 @@ int Internal::likely_phase (int idx) { return decide_phase (idx, false); }
 
 bool Internal::satisfied () {
   if ((size_t) level < assumptions.size () + (!!constraint.size ())) return false;
+  if (num_assigned < (size_t) max_var) return false;
+  assert (num_assigned == (size_t) max_var);
+
   if (propagated < trail.size ()) return false;
   if (opts.multitrail) {
     for (int i = 0; i < level; i++) {
@@ -86,8 +89,9 @@ bool Internal::satisfied () {
       }
     }
   }
-  size_t assigned = num_assigned; // this is not exact because
-  return (assigned == (size_t) max_var);       // of potential elevated literals
+
+  size_t assigned = num_assigned;
+  return (assigned == (size_t) max_var);
 }
 
 // Search for the next decision and assign it to the saved phase.  Requires
