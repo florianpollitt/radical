@@ -1016,17 +1016,11 @@ bool Internal::propagate_multitrail () {
 
   STOP (propagate);
 
-#ifndef NDEBUG
-  // TODO: very unsure about watches (also inside of propagate)
-  if (!conflict)
-    test_watch_invariant ();
-#endif
   return !conflict;
 }
 
 
 bool Internal::propagate_clean() {
-  assert (opts.multitrail && !multitrail_dirty && conflicts.empty ());
 
   bool res;
   if (multitrail_dirty) {
@@ -1034,6 +1028,7 @@ bool Internal::propagate_clean() {
     if (!res) return res;
   }
   
+  assert (opts.multitrail && !multitrail_dirty && conflicts.empty ());
   
   if (level)
     require_mode(SEARCH);
@@ -1261,6 +1256,12 @@ bool Internal::propagate_clean() {
   }
 
   STOP(propagate);
+
+#ifndef NDEBUG
+  // TODO: very unsure about watches (also inside of propagate)
+  if (!conflict)
+    test_watch_invariant ();
+#endif
 
   return !conflict;
 }
