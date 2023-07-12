@@ -11,7 +11,15 @@ void Internal::new_trail_level (int lit) {
   assert (opts.multitrail);
   multitrail.push_back (0);
   control.back ().trail = 0;
-  trails.push_back (new vector<int> ());
+  size_t reserving = 0;
+  if (level < 50)
+    reserving = max_var / 10;
+  if (reserving > 50)
+    reserving = 50;
+  vector<int> a;
+  trails.push_back (a);
+  trails.back ().reserve (reserving);
+  assert ((trails.back ()).size () == 0);
   assert (level == (int) trails.size ());
 }
 
@@ -19,11 +27,14 @@ void Internal::new_trail_level (int lit) {
 //
 void Internal::clear_trails (int level) {
   assert (level >= 0);
+  trails.resize (level);
+  /*
   while (trails.size () > (size_t) level) {
     auto t = trails.back ();
     trails.pop_back ();
     delete t;
   }
+  */
 }
 
 // returns size of trail
@@ -33,7 +44,7 @@ int Internal::trail_size (int l) {
   if (!opts.multitrail || l == 0)
     return (int) trail.size ();
   assert (l > 0 && trails.size () >= (size_t) l);
-  return (int) trails[l - 1]->size ();
+  return (int) trails[l - 1].size ();
 }
 
 // returns the sizes of trails up to (and including) level l
@@ -47,7 +58,7 @@ int Internal::trails_sizes (int l) {
   // TODO: switch code here
   /*
   for (int i = 0; i < l; i++) {
-    for (auto & lit : *(trails[i])) {
+    for (auto & lit : (trails[i])) {
       if (lit && var (lit).level == i+1)
         res ++;
     }
@@ -55,7 +66,7 @@ int Internal::trails_sizes (int l) {
   */
   // not precise...
   for (int i = 0; i < l; i++) {
-    res += trails[i]->size ();
+    res += trails[i].size ();
   }
   return res;
 }
@@ -68,7 +79,7 @@ void Internal::trail_push (int lit, int l) {
     return;
   }
   assert (l > 0 && trails.size () >= (size_t) l);
-  trails[l-1]->push_back (lit);
+  trails[l-1].push_back (lit);
 }
 
 
@@ -83,7 +94,7 @@ int Internal::next_propagation_level (int last) {
   for (int l = last; l < level; l++) {
     if (l < 0) continue;
     assert (l >= 0 && trails.size () >= (size_t) l);
-    if (multitrail[l] < trails[l]->size ()) {
+    if (multitrail[l] < trails[l].size ()) {
       return l + 1;
     }
   }
@@ -92,12 +103,12 @@ int Internal::next_propagation_level (int last) {
 
 // returns the trail that needs to be propagated
 //
-vector<int> * Internal::next_trail (int l) {
+vector<int>* Internal::next_trail (int l) {
   if (!opts.multitrail || l <= 0) {
-    return &trail;
+    return & trail;
   }
   assert (l > 0 && trails.size () >= (size_t) l);
-  return trails[l-1];
+  return & trails[l-1];
 }
 
 // returns the point from which the trail is propagated

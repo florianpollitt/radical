@@ -555,9 +555,9 @@ inline int Internal::determine_actual_backtrack_level (int jump) {
       }
       else {
         for (int l = jump + 1; l <= level; l++) {
-          const vector<int> t = *next_trail (l);
-          for (size_t i = 0; i < t.size (); i++) {
-            const auto idx = abs (t[i]);
+          const auto & t = next_trail (l);
+          for (size_t i = 0; i < t->size (); i++) {
+            const auto idx = abs ((*t)[i]);
             if (var (idx).level < l) continue;
             if (best_idx && !score_smaller (this) (best_idx, idx)) continue;
             best_idx = idx;
@@ -578,9 +578,9 @@ inline int Internal::determine_actual_backtrack_level (int jump) {
       }
       else {
         for (int l = jump + 1; l <= level; l++) {
-          const vector<int> t = *next_trail (l);
-          for (size_t i = 0; i < t.size (); i++) {
-            const auto idx = abs (t[i]);
+          const auto & t = next_trail (l);
+          for (size_t i = 0; i < t->size (); i++) {
+            const auto idx = abs ((*t)[i]);
             if (var (idx).level < l) continue;
             if (best_idx && bumped (best_idx) >= bumped (idx)) continue;
             best_idx = idx;
@@ -780,8 +780,8 @@ void Internal::analyze () {
   // for multitrail we only need to analyze the trail with the conflicting level
   // which is also level because we backtracked earlier.
 
-  vector<int> t = *next_trail (level);
-  int i = t.size ();            // Start at end-of-trail.
+  const auto & t = next_trail (level);
+  int i = t->size ();            // Start at end-of-trail.
   int open = 0;                 // Seen but not processed on this level.
   int uip = 0;                  // The first UIP literal.
 
@@ -790,7 +790,7 @@ void Internal::analyze () {
     uip = 0;
     while (!uip) {
       assert (i > 0);
-      const int lit = t[--i];
+      const int lit = (*t)[--i];
       if (!flags (lit).seen) continue;
       if (var (lit).level == level) uip = lit;
     }

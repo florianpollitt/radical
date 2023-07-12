@@ -84,7 +84,7 @@ bool Internal::satisfied () {
   if (propagated < trail.size ()) return false;
   if (opts.multitrail) {
     for (int i = 0; i < level; i++) {
-      if ((size_t) multitrail[i] < trails[i]->size ()) {
+      if ((size_t) multitrail[i] < trails[i].size ()) {
         return false;
       }
     }

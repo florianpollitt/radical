@@ -216,7 +216,7 @@ struct Internal {
 
   bool multitrail_dirty;
   vector<size_t> multitrail;    // "propagated" for each level
-  vector<vector<int>*> trails;  // all assignments on all levels
+  vector<vector<int>> trails;  // all assignments on all levels
   size_t num_assigned;          // check for satisfied
 
   
@@ -951,7 +951,7 @@ struct Internal {
     int trails_sizes (int l);
     void trail_push (int lit, int l);
     int next_propagation_level (int last);
-    vector<int> * next_trail (int l);
+    vector<int>* next_trail (int l);
     int next_propagated (int l);
     Clause * propagation_conflict (int l, Clause * c);
     int conflicting_level (Clause * c);

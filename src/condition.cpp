@@ -416,7 +416,7 @@ long Internal::condition_round (long delta) {
   int l = 0;
   for (auto & t : trails) {
     l++;
-    for (const auto & lit : *t) {
+    for (const auto & lit : t) {
       if (fixed (lit) && var (lit).level == l)
         condition_unassign (lit);
     }
@@ -726,8 +726,8 @@ long Internal::condition_round (long delta) {
     l = 0;
     for (auto & t : trails) {
       l++;
-      for (size_t i = 0; i < t->size (); i++) {
-        const int lit = (*t)[i];
+      for (size_t i = 0; i < t.size (); i++) {
+        const int lit = (t)[i];
         if (var (lit).level < l) continue;
         assert (var (lit).level == l);
         if (val (lit)) {
@@ -797,7 +797,7 @@ long Internal::condition_round (long delta) {
       l = 0;
       for (auto & t : trails) {
         l++;
-        for (const auto & lit : *t) {
+        for (const auto & lit : t) {
           if (is_autarky_literal (lit) && var (lit).level == l) {
             external->push_witness_literal_on_extension_stack (lit);
           }
@@ -891,8 +891,8 @@ long Internal::condition_round (long delta) {
   l = 0;
   for (auto & t : trails) {
     l++;
-    for (size_t i = 0; i < t->size (); i++) {
-      const int lit = (*t)[i];
+    for (size_t i = 0; i < t.size (); i++) {
+      const int lit = (t)[i];
       if (var (lit).level < l) continue;
       assert (var (lit).level == l);
       const signed char tmp = val (lit);
@@ -905,7 +905,7 @@ long Internal::condition_round (long delta) {
   for (const auto & lit : trail)
     assert (!marked (lit));
   for (auto & t : trails)
-    for (const auto & lit : *t)
+    for (const auto & lit : t)
       assert (!marked (lit));
 #endif
 

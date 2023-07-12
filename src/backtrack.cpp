@@ -144,8 +144,8 @@ void Internal::multi_backtrack (int new_level) {
     assert (i >= 0);     // check that loop is safe for level = INT_MAX
     int l = i+1;
     LOG ("unassigning level %d", l);
-    vector<int>* t = trails[i];
-    for (auto & lit : *t) {
+    auto & t = trails[i];
+    for (auto & lit : t) {
       LOG ("unassigning literal %d", lit);
       if (!lit) {                                 // design choice. Right now,
         assert (false);                           // elevated literals are just

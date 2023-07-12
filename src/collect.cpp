@@ -104,7 +104,7 @@ void Internal::protect_reasons () {
   for (auto & t : trails) {
     l++;
     assert (l <= level);
-    for (auto & lit : *t) {
+    for (auto & lit : t) {
     if (!active (lit)) continue;
       assert (val (lit));
       Var & v = var (lit);
@@ -148,7 +148,7 @@ void Internal::unprotect_reasons () {
   for (auto & t : trails) {
     l++;
     assert (l <= level);
-    for (auto & lit : *t) {
+    for (auto & lit : t) {
       if (!active (lit)) continue;
       assert (val (lit));
       Var & v = var (lit);
@@ -256,7 +256,7 @@ void Internal::update_reason_references () {
   for (auto & t : trails) {
     l++;
     assert (l <= level);
-    for (auto & lit : *t) {
+    for (auto & lit : t) {
       if (!active (lit)) continue;
       Var & v = var (lit);
       if (v.level < l) continue;

@@ -633,12 +633,12 @@ bool Internal::propagate_multitrail () {
     conflict = propagation_conflict (proplevel, 0);
     if (proplevel < 0) break;
     LOG ("PROPAGATION on level %d", proplevel);
-    vector<int> * t = next_trail (proplevel);
+    const auto & t = next_trail (proplevel);
     int64_t before = next_propagated (proplevel);
     size_t current = before;
     const bool ismultitrail = opts.multitrail; 
     while (!conflict && current != t->size ()) {
-      assert (opts.multitrail || t == &trail);
+      assert (opts.multitrail || t == & trail);
       LOG ("propagating level %d from %zd to %zd", proplevel, before, t->size ());
   
       assert (current < t->size ());
@@ -1007,7 +1007,7 @@ bool Internal::propagate_multitrail () {
       LOG (conflict, "conflict");
 
       // The trail before the current propagated level was conflict free.
-      //
+      // TODO: check if it is better to remove this line
       if (proplevel)
         no_conflict_until = trails_sizes (proplevel-1);
     }
@@ -1042,7 +1042,7 @@ bool Internal::propagate_clean() {
   LOG ("PROPAGATION clean on level %d", level);
   int64_t before = next_propagated (level);
   size_t current = before;
-  vector<int> * t = next_trail (level);
+  const auto & t = next_trail (level);
   while (!conflict && current != t->size()) {
 
     const int lit = -(*t)[current++];

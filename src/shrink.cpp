@@ -90,7 +90,7 @@ namespace CaDiCaL {
     f.poison = false;
     shrinkable.push_back(lit);
     if (opts.shrinkreap) {    // different assertion for multitrail
-      assert (!opts.multitrail || max_trail < trails[blevel-1]->size ());
+      assert (!opts.multitrail || max_trail < trails[blevel-1].size ());
       assert (opts.multitrail || max_trail < trail.size ());
       const unsigned dist = max_trail - v.trail;
       reap.push(dist);
@@ -181,7 +181,7 @@ namespace CaDiCaL {
 
   unsigned inline Internal::shrink_next(int blevel, unsigned &open, unsigned& max_trail)
   {
-    vector<int> * t = next_trail (blevel);
+    const auto & t = next_trail (blevel);
     if(opts.shrinkreap) {
       assert(!reap.empty());
       const unsigned dist = reap.pop();
@@ -264,7 +264,7 @@ namespace CaDiCaL {
 
     LOG("trying to shrink %u literals on level %u", open, blevel);
 
-    vector<int> * t = next_trail (blevel);
+    const auto & t = next_trail (blevel);
     
     LOG("maximum trail position %zd on level %u", t->size(), blevel);
     if (opts.shrinkreap)
