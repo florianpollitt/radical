@@ -320,7 +320,7 @@ bool Internal::propagate_conflicts () {
 
 bool Internal::propagate() {
   if (opts.multitrail)
-    return propagate_multitrail();
+    return propagate_clean();
 
   if (level)
     require_mode(SEARCH);
@@ -607,8 +607,6 @@ bool Internal::propagate() {
 
 bool Internal::propagate_multitrail () {
 
-  if (!multitrail_dirty)
-    return propagate_clean ();
 
   if (level) require_mode (SEARCH);
   assert (!unsat);
@@ -631,6 +629,7 @@ bool Internal::propagate_multitrail () {
     // LOG ("PROPAGATION outer loop");
     proplevel = next_propagation_level (proplevel);
     conflict = propagation_conflict (proplevel, 0);
+    if (proplevel == level) break;
     if (proplevel < 0) break;
     LOG ("PROPAGATION on level %d", proplevel);
     const auto & t = next_trail (proplevel);
@@ -998,7 +997,7 @@ bool Internal::propagate_multitrail () {
 
     if (!conflict) {
       // TODO no_conflict_until = num_assigned below this level
-      no_conflict_until = num_assigned;
+      // no_conflict_until = num_assigned;
     } else {
 
       if (stable) stats.stabconflicts++;
@@ -1029,6 +1028,13 @@ bool Internal::propagate_multitrail () {
 bool Internal::propagate_clean() {
   assert (opts.multitrail && !multitrail_dirty && conflicts.empty ());
 
+  bool res;
+  if (multitrail_dirty) {
+    res = propagate_multitrail ();
+    if (!res) return res;
+  }
+  
+  
   if (level)
     require_mode(SEARCH);
   assert(!unsat);
