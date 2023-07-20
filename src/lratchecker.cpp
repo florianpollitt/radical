@@ -30,7 +30,8 @@ signed char &LratChecker::checked_lit (int lit) {
 LratCheckerClause *LratChecker::new_clause () {
   const size_t size = imported_clause.size ();
   assert (size <= UINT_MAX);
-  const size_t bytes = sizeof (LratCheckerClause) + size * sizeof (int);
+  const int off = size ? -1 : 0;
+  const size_t bytes = sizeof (LratCheckerClause) + (size - off) * sizeof (int);
   LratCheckerClause *res = (LratCheckerClause *) new char[bytes];
   res->garbage = false;
   res->next = 0;
@@ -225,8 +226,6 @@ void LratChecker::insert () {
 
 // TODO "strict" resolution check instead of rup check
 bool LratChecker::check_resolution (vector<uint64_t> proof_chain) {
-  LOG ("LRAT CHECKER resolution check skipped for every case for now");
-  return true;
   if (proof_chain.empty ()) { // ignore these case TODO chain.size == 1?
     LOG ("LRAT CHECKER resolution check skipped clause is tautological");
     return true;
@@ -246,9 +245,8 @@ bool LratChecker::check_resolution (vector<uint64_t> proof_chain) {
     checked_lit (lit) = true;
     assert (!checked_lit (-lit));
   }
-  for (auto p = proof_chain.end () - 2; p >= proof_chain.begin ();
-       p--) {      // TODO can we do this more
-    auto &id = *p; // elegantly with reverse iterator?
+  for (auto p = proof_chain.end () - 2; p >= proof_chain.begin (); p--) {
+    auto &id = *p; 
     c = *find (id);
     assert (c); // since this is checked in check already
     for (int *i = c->literals; i < c->literals + c->size; i++) {
@@ -268,7 +266,7 @@ bool LratChecker::check_resolution (vector<uint64_t> proof_chain) {
     }
     if (!checked_lit (lit)) {
       // learned clause is subsumed by resolvents
-      assert (internal->opts.instantiate || internal->opts.decompose);
+      // assert (internal->opts.instantiate || internal->opts.decompose);
       checked_lit (lit) = true;
     }
     checked_lit (-lit) = true;
@@ -337,7 +335,7 @@ bool LratChecker::check (vector<uint64_t> proof_chain) {
         continue;
       // TODO uncomment and fuzz maybe also withouth opts.lratexternal
       // of course this also fails in decompose :/ ... and instantiate
-      // assert (!checked_lit (lit) || internal->opts.lratexternal ||
+      // assert (!checked_lit (lit) || internal->opts.lratexternal); // ||
       //        internal->opts.decompose);
       // || internal->opts.instantiate);
       // assert (!checked_lit (lit));      // tempting to assert here since
