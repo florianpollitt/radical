@@ -112,6 +112,7 @@ inline void Internal::search_assign (int lit, Clause *reason) {
     require_mode (SEARCH);
 
   const int idx = vidx (lit);
+  const bool from_external = reason == external_reason;
   assert (!vals[idx]);
   assert (!flags (idx).eliminated () || reason == decision_reason ||
           reason == external_reason);
@@ -153,8 +154,11 @@ inline void Internal::search_assign (int lit, Clause *reason) {
   v.level = lit_level;
   v.trail = (int) trail.size ();
   v.reason = reason;
-  if (!lit_level)
+  if (!lit_level && !from_external)
     learn_unit_clause (lit); // increases 'stats.fixed'
+  else if (!lit_level && from_external) {
+    learn_external_propagated_unit_clause (lit); // addition of unit was already checked
+  }
   const signed char tmp = sign (lit);
   vals[idx] = tmp;
   vals[-idx] = -tmp;

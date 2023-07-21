@@ -46,6 +46,14 @@ void Internal::learn_unit_clause (int lit) {
   mark_fixed (lit);
 }
 
+
+void Internal::learn_external_propagated_unit_clause (int lit) {
+  LOG ("assume unit clause %d from external propagator was already checked", lit);
+  assert (unit_clauses[vlit (lit)]);
+  mark_fixed (lit);
+}
+
+
 /*------------------------------------------------------------------------*/
 
 // Move bumped variables to the front of the (VMTF) decision queue.  The
