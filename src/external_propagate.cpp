@@ -595,7 +595,7 @@ void Internal::explain_external_propagations () {
           real_level = tmp;
       }
       if (v.level && !real_level) {
-        build_chain_for_units (lit, v.reason);
+        build_chain_for_units (lit, v.reason, 1);
         learn_unit_clause (lit);
         lrat_chain.clear ();
       }

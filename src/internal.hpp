@@ -570,7 +570,7 @@ struct Internal {
   // Forward reasoning through propagation in 'propagate.cpp'.
   //
   int assignment_level (int lit, Clause *);
-  void build_chain_for_units (int lit, Clause *reason);
+  void build_chain_for_units (int lit, Clause *reason, bool forced);
   void build_chain_for_empty ();
   void search_assign (int lit, Clause *);
   void search_assign_driving (int lit, Clause *reason);

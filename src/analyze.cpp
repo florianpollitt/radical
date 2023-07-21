@@ -904,7 +904,7 @@ void Internal::analyze () {
       // level 0 this will not result in a valid chain).
       // we can just use build_chain_for_units in propagate
       //
-      build_chain_for_units (forced, conflict);
+      build_chain_for_units (forced, conflict, 0);
 
       LOG ("forcing %d", forced);
       search_assign_driving (forced, conflict);
