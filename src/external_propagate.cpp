@@ -490,6 +490,7 @@ Clause *Internal::add_external_clause (bool as_redundant,
       const int lit = clause[0];
       assert (lit);
       assert (!unit_clauses[vlit (lit)]);
+      assert (!unsat);
       unit_clauses[vlit (lit)] = id;
     }
     return 0;

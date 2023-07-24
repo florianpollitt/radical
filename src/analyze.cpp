@@ -31,6 +31,7 @@ void Internal::learn_empty_clause () {
 }
 
 void Internal::learn_unit_clause (int lit) {
+  assert (!unsat);
   LOG ("learned unit clause %d", lit);
   external->check_learned_unit_clause (lit);
   int64_t id = ++clause_id;
@@ -48,6 +49,7 @@ void Internal::learn_unit_clause (int lit) {
 
 
 void Internal::learn_external_propagated_unit_clause (int lit) {
+  assert (!unsat);
   LOG ("assume unit clause %d from external propagator was already checked", lit);
   assert (unit_clauses[vlit (lit)]);
   mark_fixed (lit);
