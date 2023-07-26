@@ -48,14 +48,6 @@ void Internal::learn_unit_clause (int lit) {
 }
 
 
-void Internal::learn_external_propagated_unit_clause (int lit) {
-  assert (!unsat);
-  LOG ("assume unit clause %d from external propagator was already checked", lit);
-  assert (unit_clauses[vlit (lit)]);
-  mark_fixed (lit);
-}
-
-
 /*------------------------------------------------------------------------*/
 
 // Move bumped variables to the front of the (VMTF) decision queue.  The
@@ -862,6 +854,8 @@ void Internal::analyze () {
   assert (lrat_chain.empty ());
   assert (unit_chain.empty ());
   assert (unit_analyzed.empty ());
+  assert (clause.empty ());
+  
 
   // First update moving averages of trail height at conflict.
   //

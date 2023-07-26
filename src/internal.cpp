@@ -14,6 +14,7 @@ Internal::Internal ()
       vsize (0), max_var (0), clause_id (0), original_id (0), reserved_ids (0),
       conflict_id (0), level (0), vals (0), score_inc (1.0), scores (this),
       conflict (0), ignore (0), external_reason (&external_reason_clause),
+      newest_clause (0), force_no_backtrack (false), from_propagator (false),
       notified (0), propagated (0), propagated2 (0), propergated (0),
       best_assigned (0), target_assigned (0), no_conflict_until (0),
       unsat_constraint (false), marked_failed (true), proof (0),
@@ -217,7 +218,7 @@ int Internal::cdcl_loop_with_inprocessing () {
       res = 20;
     else if (unsat_constraint)
       res = 20;
-    else if (!propagate ())
+    else if (conflict || !propagate ())
       analyze (); // propagate and analyze
     else if (iterating)
       iterate ();                               // report learned unit

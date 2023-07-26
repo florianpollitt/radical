@@ -1,6 +1,5 @@
 #include "internal.hpp"
 
-#include <unordered_set>
 
 namespace CaDiCaL {
 
@@ -130,13 +129,14 @@ bool Internal::external_propagate () {
         LOG ("External propgation of %d is falsified under current trail",
              ilit);
         stats.ext_prop.eprop_conf++;
+        int level_before = level;
+        size_t assigned = trail.size ();
         Clause *res = learn_external_reason_clause (ilit, elit);
 #ifndef LOGGING
         LOG (res, "reason clause of external propagation of %d:", elit);
 #endif
-        int level_before = level;
         bool trail_changed =
-            (handle_external_clause (res) || level != level_before);
+            (trail.size () != assigned || level != level_before);
 
         if (unsat || conflict)
           break;
@@ -172,10 +172,11 @@ bool Internal::external_propagate () {
 
       while (has_external_clause) {
         int level_before = level;
+        size_t assigned = trail.size ();
 
-        Clause *res = add_external_clause (false, 0);
+        add_external_clause (0);
         bool trail_changed =
-            (handle_external_clause (res) || level != level_before);
+            (assigned != trail.size () || level != level_before);
 
         if (unsat || conflict)
           break;
@@ -209,6 +210,8 @@ bool Internal::external_propagate () {
 //
 void Internal::move_literal_to_watch (bool other_watch) {
   if (clause.size () < 2)
+    return;
+  if (!level)
     return;
   int i = 0;
   if (other_watch)
@@ -265,7 +268,7 @@ void Internal::move_literal_to_watch (bool other_watch) {
 // (i.e. root-level falsified literals are removed, root satisfied clauses
 // are skipped). Duplicate literals are removed, tauotologies are detected
 // and skipped. It always adds the original (un-simplified) external clause
-// to the proof as an input (redundant, if as_redundant is true) clause and
+// to the proof as an input clause and
 // the simplified version of it (except exceptions below) as a derived
 // clause.
 //
@@ -277,16 +280,11 @@ void Internal::move_literal_to_watch (bool other_watch) {
 // 'Internal::clause' has the unit literal (without 0) and the function
 // returns 0.
 //
-// In every other cases a new clause is constructed and the pointer to it is
-// returned.
+// In every other cases a new clause is constructed and the pointer is in
+// newest_clause
 //
-Clause *Internal::add_external_clause (bool as_redundant,
-                                       int propagated_elit) {
-  size_t lemma_size = 0;
-  size_t original_size = 0;
-  bool skip = false;
-  unordered_set<int> learned_levels;
-  size_t unassigned = 0;
+void Internal::add_external_clause (int propagated_elit, bool no_backtrack) {
+  assert (original.empty ());
   int elit = 0;
 
   if (propagated_elit) {
@@ -301,201 +299,24 @@ Clause *Internal::add_external_clause (bool as_redundant,
   assert (clause.empty ());
   assert (original.empty ());
   assert (lrat_chain.empty ());
-
-  vector<int> external_original;
-  vector<int> marking;
+  
+  assert (!force_no_backtrack);
+  assert (!from_propagator);
+  force_no_backtrack = no_backtrack;
+  from_propagator = true;
   while (elit) {
     assert (external->is_observed[abs (elit)]);
-    original_size++;
-
-    if (opts.check && (opts.checkwitness || opts.checkfailed)) {
-      external->original.push_back (elit);
-    }
-    if (proof || (opts.lrat && !opts.lratexternal))
-      external_original.push_back (elit);
-
-    bool added_id = false;
-    if (opts.lrat && !opts.lratexternal) {
-      // actually find unit of -elit (flips elit < 0)
-      unsigned eidx = (elit > 0) + 2u * (unsigned) abs (elit);
-      assert ((size_t) eidx < external->ext_units.size ());
-      const uint64_t id = external->ext_units[eidx];
-      added_id = id > 0;
-      bool added = external->ext_flags[abs (elit)];
-      if (id && !added) {
-        external->ext_flags[abs (elit)] = true;
-        lrat_chain.push_back (id);
-      }
-    }
-
-    // TODO: double-check the consequences of internalization (tainting!)
-    const int ilit = external->internalize (elit);
-    original.push_back (ilit);
-#ifndef NDEBUG
-    assert (fixed (ilit) || observed (ilit));
-    LOG ("elit: %d -> ilit: %d", elit, ilit);
-#endif
-    int tmp = marked (ilit);
-    if (tmp > 0) {
-      LOG ("removing duplicated literal %d", ilit);
-    } else if (tmp < 0) {
-      LOG ("tautological since both %d and %d occur", -ilit, ilit);
-      if (propagated_elit)
-        LOG ("tautological clause was given as reason of external "
-             "propagation.");
-      skip = true;
-    } else {
-      // Mark lit to recognize tautology and duplication
-      mark (ilit);
-      marking.push_back (ilit);
-
-      tmp = fixed (ilit);
-      if (tmp > 0) {
-        LOG ("root level satisfied literal %d", ilit);
-        if (propagated_elit)
-          LOG ("satisfied clause was given as reason of external "
-               "propagation.");
-        skip = true;
-
-        if (propagated_elit)
-          elit = external->propagator->cb_add_reason_clause_lit (
-              propagated_elit);
-        else
-          elit = external->propagator->cb_add_external_clause_lit ();
-        continue;
-
-      } else if (tmp < 0) {
-        LOG ("root level falsified literal %d is ignored", ilit);
-        if (opts.lrat && !opts.lratexternal && !added_id) {
-          uint64_t uid = (unit_clauses[vlit (-ilit)]);
-          assert (uid);
-          lrat_chain.push_back (uid);
-        }
-
-        if (propagated_elit)
-          elit = external->propagator->cb_add_reason_clause_lit (
-              propagated_elit);
-        else
-          elit = external->propagator->cb_add_external_clause_lit ();
-        continue;
-      }
-
-      tmp = val (ilit);
-      if (tmp)
-        learned_levels.insert (var (ilit).level);
-      else
-        unassigned++;
-
-#ifndef NDEBUG
-      if (tmp) {
-        LOG ("elit: %d -> ilit: %d val: %d level: %d", elit, ilit, tmp,
-             var (ilit).level);
-      } else {
-        LOG ("elit: %d -> ilit: %d val: %d level: %d - unassigned", elit,
-             ilit, tmp, var (ilit).level);
-      }
-#endif
-
-      clause.push_back (ilit);
-      lemma_size++;
-    }
-
+    external->add (elit);
     if (propagated_elit)
-      elit =
-          external->propagator->cb_add_reason_clause_lit (propagated_elit);
+      elit = external->propagator->cb_add_reason_clause_lit (propagated_elit);
     else
       elit = external->propagator->cb_add_external_clause_lit ();
   }
-  if (opts.check && (opts.checkwitness || opts.checkfailed)) {
-    external->original.push_back (elit);
-  }
-  uint64_t id = ++clause_id;
-  if (proof)
-    proof->add_external_original_clause (id, external_original);
-  
-  if (opts.lrat && !opts.lratexternal) {
-    for (const auto &lit : external_original) {
-      external->ext_flags[abs (lit)] = false;
-    }
-  }
-
-  // Clean up marks
-  for (const auto &lit : marking)
-    unmark (lit);
-
-  if (skip) {
-    assert (!propagated_elit);
-    // TODO: handle the error-case if a satisfied clause is given as reason
-    // of propagation.
-    if (proof)
-      proof->delete_external_original_clause (id, external_original);
-    original.clear ();
-    clause.clear ();
-    lrat_chain.clear ();
-    external_original.clear ();
-    return 0;
-  }
-
-  if (original_size > lemma_size) {
-    external->check_learned_clause ();
-    if (proof) {
-      uint64_t new_id = ++clause_id;
-      if (opts.lrat && !opts.lratexternal) {
-        lrat_chain.push_back (id);
-        proof->add_derived_clause (new_id, clause, lrat_chain);
-      } else {
-        proof->add_derived_clause (new_id, clause);
-      }
-      proof->delete_external_original_clause (id, external_original);
-      id = new_id;
-    }
-  }
-  lrat_chain.clear ();
-  original.clear ();
-  external_original.clear ();
-  int glue = (int) (learned_levels.size () + unassigned);
-  assert (glue <= (int) clause.size ());
-
-  if (lemma_size > 1) {
-    move_literal_to_watch (false);
-    move_literal_to_watch (true);
-
-#ifndef NDEBUG
-    check_watched_literal_invariants ();
-#endif
-
-    Clause *res = new_clause (as_redundant, glue);
-    res->id = id;
-    assert (watching ());
-    watch_clause (res);
-
-    clause.clear ();
-
-    LOG (res, "New external clause is constructed: ");
-
-    return res;
-  } else {
-    // TODO: give ids to these...
-    assert (clause.size () < 2);
-    if (clause.empty ()) {
-      if (!original_size)
-        VERBOSE (1, "empty clause is learnt from external propagator");
-      else
-        MSG ("falsified clause is learnt from external propagator");
-      unsat = true;
-      conflict_id = id;
-    } else {
-      assert (clause.size () == 1);
-      LOG (clause, "unit clause is learnt from external propagator");
-      const int lit = clause[0];
-      assert (lit);
-      assert (!unit_clauses[vlit (lit)]);
-      assert (!unsat);
-      unit_clauses[vlit (lit)] = id;
-    }
-    return 0;
-  }
-  return 0;
+  external->add (elit);
+  assert (original.empty ());
+  assert (clause.empty ());
+  force_no_backtrack = false;
+  from_propagator = false;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -521,11 +342,7 @@ void Internal::explain_reason (int ilit, Clause *reason, int &open) {
     assert (val (other) < 0);
     assert (v.level <= level);
     if (v.reason == external_reason) {
-      v.reason = learn_external_reason_clause (-other);
-      if (!v.reason) {
-        v.level = 0;
-        learn_external_propagated_unit_clause (-other);
-      }
+      v.reason = learn_external_reason_clause (-other, 0, true);
     }
     if (v.level && v.reason) {
       f.seen = true;
@@ -556,6 +373,7 @@ void Internal::explain_reason (int ilit, Clause *reason, int &open) {
 //
 void Internal::explain_external_propagations () {
   assert (conflict);
+  assert (clause.empty ());
 
   Clause *reason = conflict;
   int i = trail.size (); // Start at end-of-trail
@@ -623,7 +441,8 @@ void Internal::explain_external_propagations () {
 // argument.
 //
 Clause *Internal::learn_external_reason_clause (int ilit,
-                                                int falsified_elit) {
+                                                int falsified_elit,
+                                                bool no_backtrack) {
   assert (external->propagator);
 
   assert (clause.empty ());
@@ -633,172 +452,63 @@ Clause *Internal::learn_external_reason_clause (int ilit,
 
   int elit = 0;
   if (!falsified_elit) {
-    elit = externalize (ilit);
     assert (!fixed (ilit));
+    elit = externalize (ilit);
   } else
     elit = falsified_elit;
 
   LOG ("ilit: %d, elit: %d", ilit, elit);
-  Clause *res = add_external_clause (false, elit);
-
-  if (res) {
-    // All went well, new external clause was learned and can be returned
-    LOG (res, "reason of %d is learned from external propagator: ", elit);
-    assert (clause.empty ());
-    return res;
-  }
-
-  assert (!res);
-  LOG ("reason of %d is asked from external propagator: unit", elit);
-
-  // No clause can be constructed because the reason is either a unit
-  // clause or was empty (later should never happen with a correct external
-  // propagator).
-  assert (clause.size () < 2);
-
-  if (clause.size () == 1) {
-    if (falsified_elit) {
-      // The forced literal is kept in clause[0] in that corner-case, the
-      // return side must clean it up.
-      return 0;
-    } else {
-      assert (clause[0] == ilit);
-      // The reason of external propagation is a unit clause (after
-      // root-level simplifications).
-      // By returning 0 as reason, the literal will be learned as a new
-      // root-level unit clause.
-      clause.clear ();
-      return 0;
-    }
-  } else {
-    assert (clause.empty ());
-    LOG ("empty reason clause was added (rendering the problem to unsat).");
-    // Same as before, return 0, but set unsat to true, so the problem can
-    // be recognized.
-    assert (unsat);
-    return 0;
-  }
+  add_external_clause (elit, no_backtrack);
+  return newest_clause;
 }
 
 /*----------------------------------------------------------------------------*/
 //
-// This function decides what to do upon learning a new clause from the
-// external propagator. The possible scenarios are:
-// 1. External clause is satisfied by root-level assignment.
-//    In that case nothing happens, the function returns false.
-// 2. External clause is a unit clause (after root-level simplifications).
-//    In that case the solver backtracks to root-level, assigns the unit and
-//    does BCP.
-//    If that new unit+BCP leads to a conflict, unsat is set true and the
-//    function returns true. Otherwise, the function returns true, without
-//    changing 'unsat'.
-// 3. External clause is empty (after root-level simplifications).
-//    In that case variable 'unsat' is set true and the function returns
-//    true.
-// 4. External clause is falsified under the current trail (after root-level
-//    simplifications, but not empty under the root-level assignments).
-//    In that case, if chrono is off, the solver backtracks to the highest
-//    level of the external clause. Variable 'conflict' is set to point to
-//    the external clause and the function returns true (if did backtrack)
-//    or false (ow).
-// 5. External clause propagates under the current trail (after root-level
-//    simplifications, but not unit under the root-level assignments).
-//    In that case, if chrono is off, the solver backtracks to the highest
-//    assigned level of the external clause. Then, 'search_assign_driving'
-//    is called on the unassigned literal, giving the external clause as a
-//    reason and the function returns true.
-// 6. External clause does not fall into any of the previous cases.
-//    The external clause is learned, but nothing else happens, the function
-//    returns false.
+// Checks if the new clause forces backtracking, new assignments or conflict
+// analysis
 //
-bool Internal::handle_external_clause (Clause *res) {
-  bool trail_changed = false;
+void Internal::handle_external_clause (Clause *res) {
+  // at level 0 we have to do nothing...
+  if (!level) return;
   if (!res) {
-    if (clause.empty () && !unsat) {
-      // Might be an ignored or root-satisfied clause, there is nothing to
-      // do with it
-      LOG (clause, "No external clause is learned.");
-      stats.ext_prop.elearn_conf++;
-      // trail did not change
-      return false;
-    } else {
-      stats.ext_prop.elearned++;
-
-      assert (clause.size () < 2);
-      if (clause.size () == 1) {
-        LOG (clause, "External clause is unit clause, backtrack to fix it "
-                     "and propagate:");
-        stats.ext_prop.elearn_prop++;
-        if (level)
-          backtrack ();
-        const uint64_t id = clause_id;
-        assign_original_unit (id, clause[0]);
-        clause.clear ();
-
-        if (unsat) {
-          LOG ("External clause made the formula unsatisfiable.");
-          assert (conflict);
-          stats.ext_prop.elearn_conf++;
-        } else {
-          stats.ext_prop.elearn_prop++;
-        }
-        return true;
-
-      } else if (clause.size () == 0) {
-        // Empty/Falsified clause is learned from the external propagator
-        assert (unsat);
-        stats.ext_prop.elearn_conf++;
-        return false;
-      }
-    }
-  } else if (val (res->literals[0]) < 0 && val (res->literals[1]) < 0) {
-
-    if (!opts.chrono) {
-      const int conflict_level = var (res->literals[0]).level;
-      if (conflict_level != level) {
-        // propagated = var(res->literals[0]).trail;
-        backtrack (conflict_level);
-        trail_changed = true;
-      }
-    }
-    conflict = res;
-    stats.ext_prop.elearned++;
-    stats.ext_prop.elearn_conf++;
-
-    return trail_changed;
-  } else if (!val (res->literals[0]) && val (res->literals[1]) < 0) {
-    if (!opts.chrono) {
-      const int last_assignment_level = var (res->literals[1]).level;
-      if (last_assignment_level != level) {
-        backtrack (last_assignment_level);
-      }
-    }
-    search_assign_driving (res->literals[0], res);
-    stats.ext_prop.elearned++;
-    stats.ext_prop.elearn_conf++;
-
-    return true;
-    // TODO: repropagation case, the new clause maybe allows to propagate an
-    // already propagated literal on a lower decision level.
-    //
-    // } else if (val(res->literals[0]) > 0 && val(res->literals[1]) < 0) {
-    // const int last_assignment_level = var(res->literals[1]).level;
-    // if (last_assignment_level < var(res->literals[0]).level) {
-    // LOG("Lower (%d instead of %d) re-propagation of %d is possible due to
-    // external
-    // lemma.",last_assignment_level,res->literals[0]).level,res->literals[0]);
-    // backtrack (last_assignment_level);
-    // search_assign (res->literals[0], res);
-    // trail_changed = true;
-    // }
-  } else {
-    LOG (res, "Learning external clause (no propagation).");
-    stats.ext_prop.elearned++;
-
-    return false;
+    // new unit clause. For now just backtrack.
+    assert (!force_no_backtrack);
+    assert (level);
+    backtrack ();
+    return;
   }
-
-  return false;
+  assert (res->size >= 2);
+  const int pos0 = res->literals[0];
+  const int pos1 = res->literals[1];
+  if (force_no_backtrack) {
+    assert (val (pos1) < 0);
+    assert (val (pos0) >= 0);
+    return;
+    // TODO: maybe fix levels
+  }
+  const int l0 = var (pos0).level;
+  const int l1 = var (pos1).level;
+  if (val (pos0) < 0) {    // conflicting or propagating clause
+    assert (0 < l1 && l1 <= l0);
+    if (!opts.chrono) {
+      backtrack (l1);
+    }
+    if (val (pos0) < 0) {
+      conflict = res;
+      if (!from_propagator)
+        analyze ();  // TODO: is it good to do conflict analysis?
+    } else {
+      search_assign_driving (pos0, res);
+    }
+    return;
+  }
+  if (val (pos1) < 0 && !val (pos0)) {  // propagating clause
+    if (!opts.chrono) {
+      backtrack (l1);
+    }
+    search_assign_driving (pos0, res);
+    return;
+  }
 }
 
 /*----------------------------------------------------------------------------*/
@@ -878,8 +588,11 @@ bool Internal::external_check_solution () {
     LOG ("Found solution triggered new clauses from external propagator.");
 
     while (has_external_clause) {
-      Clause *res = add_external_clause (false, 0);
-      trail_changed = handle_external_clause (res);
+      int level_before = level;
+      size_t assigned = trail.size ();
+      add_external_clause (0);
+      bool trail_changed =
+          (assigned != trail.size () || level != level_before);
       added_new_clauses = true;
       //
       // There are many possible scenarios here:

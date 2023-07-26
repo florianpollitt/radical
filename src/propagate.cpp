@@ -126,7 +126,7 @@ inline void Internal::search_assign (int lit, Clause *reason) {
     // analysis.
     // TODO: refine this eager explanation step.
     LOG ("Too low decision level to store external reason of: %d", lit);
-    reason = learn_external_reason_clause (lit);
+    reason = learn_external_reason_clause (lit, 0, true);
   }
   // The following cases are explained in the two comments above before
   // 'decision_reason' and 'assignment_level'.
@@ -154,9 +154,6 @@ inline void Internal::search_assign (int lit, Clause *reason) {
   v.reason = reason;
   if (!lit_level && !from_external)
     learn_unit_clause (lit); // increases 'stats.fixed'
-  else if (!lit_level && from_external) {
-    learn_external_propagated_unit_clause (lit); // addition of unit was already checked
-  }
   const signed char tmp = sign (lit);
   vals[idx] = tmp;
   vals[-idx] = -tmp;

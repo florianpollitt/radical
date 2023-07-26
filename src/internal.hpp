@@ -34,6 +34,7 @@ extern "C" {
 #include <queue>
 #include <string>
 #include <vector>
+#include <unordered_set>
 
 /*------------------------------------------------------------------------*/
 
@@ -203,6 +204,10 @@ struct Internal {
   Clause *conflict;             // set in 'propagation', reset in 'analyze'
   Clause *ignore;               // ignored during 'vivify_propagate'
   Clause *external_reason;      // used as reason at external propagations
+  Clause *newest_clause;        // used in external_propagate
+  bool force_no_backtrack;      // for new clauses with external propagator
+  bool from_propagator;         // differentiate new clauses...
+  vector<Clause *> fix_later;   // for multitrail + external propagator
   size_t notified;           // next trail position to notify external prop
   Clause *probe_reason;      // set during probing
   size_t propagated;         // next trail position to propagate
@@ -597,7 +602,6 @@ struct Internal {
   //
   void learn_empty_clause ();
   void learn_unit_clause (int lit);
-  void learn_external_propagated_unit_clause (int lit);
   void bump_variable (int lit);
   void bump_variables ();
   int recompute_glue (Clause *);
@@ -627,12 +631,13 @@ struct Internal {
   //
   bool external_propagate ();
   bool external_check_solution ();
-  Clause *add_external_clause (bool as_redundant, int propagated_lit = 0);
-  Clause *learn_external_reason_clause (int lit, int falsified_elit = 0);
+  void add_external_clause (int propagated_lit = 0, bool no_backtrack = false);
+  Clause *learn_external_reason_clause (int lit, int falsified_elit = 0,
+                                        bool no_backtrack = false);
   void explain_external_propagations ();
   void explain_reason (int lit, Clause *, int &open);
   void move_literal_to_watch (bool other_watch);
-  bool handle_external_clause (Clause *);
+  void handle_external_clause (Clause *);
   void notify_assignments ();
   void notify_decision ();
   void notify_backtrack (size_t new_level);

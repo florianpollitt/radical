@@ -340,17 +340,22 @@ void Internal::assign_original_unit (uint64_t id, int lit) {
 }
 
 // New clause added through the API, e.g., while parsing a DIMACS file.
+// Also used by external_propagate
+// Assumes that the internalized literals of the new clause are in original
+// puts the pointer to the new clause to newest_clause
+// if one is constructed, 0 otherwise.
 //
 void Internal::add_new_original_clause (uint64_t id) {
-  if (level)
-    backtrack ();
   LOG (original, "original clause");
+  assert (clause.empty ());
   bool skip = false;
+  unordered_set<int> learned_levels;
+  size_t unassigned = 0;
+  newest_clause = 0;
   if (unsat) {
     LOG ("skipping clause since formula already inconsistent");
     skip = true;
   } else {
-    assert (clause.empty ());
     // assert (lrat_chain.empty ());
     for (const auto &lit : original) {
       int tmp = marked (lit);
@@ -361,7 +366,7 @@ void Internal::add_new_original_clause (uint64_t id) {
         skip = true;
       } else {
         mark (lit);
-        tmp = val (lit);
+        tmp = fixed (lit);
         if (tmp < 0) {
           LOG ("removing falsified literal %d", lit);
           if (opts.lrat && !opts.lratexternal) {
@@ -379,6 +384,11 @@ void Internal::add_new_original_clause (uint64_t id) {
         } else {
           clause.push_back (lit);
           assert (flags (lit).status != Flags::UNUSED);
+          tmp = val (lit);
+          if (tmp)
+            learned_levels.insert (var (lit).level);
+          else
+            unassigned++;
         }
       }
     }
@@ -410,27 +420,48 @@ void Internal::add_new_original_clause (uint64_t id) {
         else
           proof->delete_external_original_clause (id, external->eclause);
       }
+      external->check_learned_clause ();
     }
     lrat_chain.clear ();
     if (!size) {
-      if (!unsat) {
-        if (!original.size ())
-          VERBOSE (1, "found empty original clause");
-        else
-          MSG ("found falsified original clause");
-        unsat = true;
-        conflict_id = new_id;
-      }
+      assert (!unsat);
+      if (!original.size ())
+        VERBOSE (1, "found empty original clause");
+      else
+        MSG ("found falsified original clause");
+      unsat = true;
+      conflict_id = new_id;
     } else if (size == 1) {
-      assign_original_unit (new_id, clause[0]);
+      if (force_no_backtrack) {
+        const int idx = vidx (clause[0]);
+        assert (vals[idx] >= 0);
+        assert (!flags (idx).eliminated ());
+        Var &v = var (idx);
+        v.level = 0;
+        v.reason = 0;
+        const unsigned uidx = vlit (clause[0]);
+        unit_clauses[uidx] = new_id;
+        mark_fixed (clause[0]);
+      } else {
+        handle_external_clause (0);
+        assign_original_unit (new_id, clause[0]);
+      }
     } else {
-      Clause *c = new_clause (false);
+      move_literal_to_watch (false);
+      move_literal_to_watch (true);
+#ifndef NDEBUG
+      check_watched_literal_invariants ();
+#endif
+      int glue = (int) (learned_levels.size () + unassigned);
+      assert (glue <= (int) clause.size ());
+      Clause *c = new_clause (false, glue);
       c->id = new_id;
       clause_id--;
       watch_clause (c);
-    }
-    if (original.size () > size) {
-      external->check_learned_clause ();
+      clause.clear ();
+      original.clear ();
+      handle_external_clause (c);
+      newest_clause = c;
     }
   }
   clause.clear ();
