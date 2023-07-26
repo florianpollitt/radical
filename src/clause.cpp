@@ -396,6 +396,8 @@ void Internal::add_new_original_clause (uint64_t id) {
       unmark (lit);
   }
   if (skip) {
+    if (from_propagator)
+      stats.ext_prop.elearn_conf++;
     if (proof) {
       if (opts.lrat) {
         proof->delete_external_original_clause (id, external->eclause);
@@ -424,6 +426,8 @@ void Internal::add_new_original_clause (uint64_t id) {
     }
     lrat_chain.clear ();
     if (!size) {
+      if (from_propagator)
+        stats.ext_prop.elearn_conf++;
       assert (!unsat);
       if (!original.size ())
         VERBOSE (1, "found empty original clause");

@@ -469,14 +469,21 @@ Clause *Internal::learn_external_reason_clause (int ilit,
 //
 void Internal::handle_external_clause (Clause *res) {
   // at level 0 we have to do nothing...
+  if (from_propagator)
+    stats.ext_prop.elearned++;
+
   if (!level) return;
   if (!res) {
+    if (from_propagator)
+      stats.ext_prop.elearn_prop++;
     // new unit clause. For now just backtrack.
     assert (!force_no_backtrack);
     assert (level);
     backtrack ();
     return;
   }
+  if (from_propagator)
+    stats.ext_prop.elearned++;
   assert (res->size >= 2);
   const int pos0 = res->literals[0];
   const int pos1 = res->literals[1];
@@ -500,6 +507,8 @@ void Internal::handle_external_clause (Clause *res) {
     } else {
       search_assign_driving (pos0, res);
     }
+    if (from_propagator)
+      stats.ext_prop.elearn_conf++;
     return;
   }
   if (val (pos1) < 0 && !val (pos0)) {  // propagating clause
@@ -507,6 +516,8 @@ void Internal::handle_external_clause (Clause *res) {
       backtrack (l1);
     }
     search_assign_driving (pos0, res);
+    if (from_propagator)
+      stats.ext_prop.elearn_conf++;
     return;
   }
 }
