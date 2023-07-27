@@ -212,6 +212,7 @@ struct Internal {
   int tainted_literal;          // used for ILB
   vector<Clause *> fix_later;   // for multitrail + external propagator
   size_t notified;              // next trail position to notify external prop
+  int notified_level;           // for reimply
   Clause *probe_reason;         // set during probing
   size_t propagated;            // next trail position to propagate
   size_t propagated2;         // next binary trail position to propagate

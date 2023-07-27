@@ -176,7 +176,8 @@ void Internal::multi_backtrack (int new_level) {
   LOG ("backtracking on multitrail to decision level %d with decision %d",
        new_level, control[new_level].decision);
 
-  int elevated = 0, unassigned = 0, notify_level = new_level;
+  
+  int elevated = 0, unassigned = 0, notify_level = new_level + 1;
 
   for (int i = new_level; i < level; i++) {
     assert (level > 0);
@@ -186,11 +187,10 @@ void Internal::multi_backtrack (int new_level) {
     auto &t = trails[i];
     for (auto &lit : t) {
       LOG ("unassigning literal %d", lit);
-      if (!lit) {       // design choice. Right now,
-        assert (false); // elevated literals are just
-        LOG ("empty space on trail level %d",
-             l);    // kept on the trail so this
-        elevated++; // assertion should hold
+      if (!lit) {  // cannot happen
+        assert (false);
+        LOG ("empty space on trail level %d", l);
+        elevated++;
         continue;
       }
       Var &v = var (lit);
@@ -202,7 +202,7 @@ void Internal::multi_backtrack (int new_level) {
         LOG ("elevated literal %d on level %d", lit, v.level);
         // assert (opts.chrono); probably not true anymore...
         elevated++;
-        if (v.level < notify_level)
+        if (v.level && v.level < notify_level)
           notify_level = v.level;
       }
     }
@@ -214,7 +214,10 @@ void Internal::multi_backtrack (int new_level) {
        percent (elevated, unassigned + elevated));
   stats.elevated += elevated;
   
-  notify_backtrack (notify_level);
+  assert (notify_level);
+  notify_backtrack (notify_level - 1);
+  notified_level = notify_level - 1;
+  notified = 0;
   if (elevated)
     notify_assignments ();
 

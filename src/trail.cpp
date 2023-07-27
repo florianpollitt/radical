@@ -29,13 +29,6 @@ void Internal::new_trail_level (int lit) {
 void Internal::clear_trails (int level) {
   assert (level >= 0);
   trails.resize (level);
-  /*
-  while (trails.size () > (size_t) level) {
-    auto t = trails.back ();
-    trails.pop_back ();
-    delete t;
-  }
-  */
 }
 
 // returns size of trail
@@ -72,16 +65,6 @@ int Internal::trails_sizes (int l) {
   return res;
 }
 
-// pushes lit on trail for level l
-//
-void Internal::trail_push (int lit, int l) {
-  if (!opts.reimply || l == 0) {
-    trail.push_back (lit);
-    return;
-  }
-  assert (l > 0 && trails.size () >= (size_t) l);
-  trails[l - 1].push_back (lit);
-}
 
 // returns the next level that needs to be propagated
 //

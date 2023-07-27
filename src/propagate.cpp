@@ -215,6 +215,18 @@ inline void Internal::search_assign (int lit, Clause *reason) {
   lrat_chain.clear ();
 }
 
+
+// pushes lit on trail for level l
+//
+inline void Internal::trail_push (int lit, int l) {
+  if (!opts.reimply || l == 0) {
+    trail.push_back (lit);
+    return;
+  }
+  assert (l > 0 && trails.size () >= (size_t) l);
+  trails[l - 1].push_back (lit);
+}
+
 /*------------------------------------------------------------------------*/
 
 // External versions of 'search_assign' which are not inlined.  They either

@@ -16,7 +16,7 @@ Internal::Internal ()
       score_inc (1.0), scores (this), conflict (0), ignore (0),
       external_reason (&external_reason_clause), newest_clause (0),
       force_no_backtrack (false), from_propagator (false),
-      tainted_literal (0), notified (0),
+      tainted_literal (0), notified (0), notified_level (0),
       probe_reason (0),
       propagated (0), propagated2 (0), propergated (0), best_assigned (0),
       target_assigned (0),
