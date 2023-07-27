@@ -13,6 +13,7 @@ inline void Internal::unassign (int lit) {
   vals[idx] = 0;
   vals[-idx] = 0;
   LOG ("unassign %d @ %d", lit, var (idx).level);
+  num_assigned--;
 
   // In the standard EVSIDS variable decision heuristic of MiniSAT, we need
   // to push variables which become unassigned back to the heap.
@@ -80,6 +81,13 @@ void Internal::backtrack (int new_level) {
 
   stats.backtracks++;
   update_target_and_best ();
+
+  // sometimes we do not use multitrail even with option enabled e.g. in
+  // probe
+  if (opts.reimply && !trails.empty ()) {
+    multi_backtrack (new_level);
+    return;
+  }
 
   const size_t assigned = control[new_level + 1].trail;
 
@@ -150,6 +158,62 @@ void Internal::backtrack (int new_level) {
     notify_assignments ();
   }
 
+  control.resize (new_level + 1);
+  level = new_level;
+  if (tainted_literal) {
+    assert (opts.ilb);
+    if (!val (tainted_literal)) {
+      tainted_literal = 0;
+    }
+  }
+}
+
+void Internal::multi_backtrack (int new_level) {
+
+  assert (opts.multitrail);
+  assert (0 <= new_level && new_level < level);
+
+  LOG ("backtracking on multitrail to decision level %d with decision %d",
+       new_level, control[new_level].decision);
+
+  int elevated = 0, unassigned = 0;
+
+  for (int i = new_level; i < level; i++) {
+    assert (level > 0);
+    assert (i >= 0); // check that loop is safe for level = INT_MAX
+    int l = i + 1;
+    LOG ("unassigning level %d", l);
+    auto &t = trails[i];
+    for (auto &lit : t) {
+      LOG ("unassigning literal %d", lit);
+      if (!lit) {       // design choice. Right now,
+        assert (false); // elevated literals are just
+        LOG ("empty space on trail level %d",
+             l);    // kept on the trail so this
+        elevated++; // assertion should hold
+        continue;
+      }
+      Var &v = var (lit);
+      if (v.level == l) {
+        unassign (lit);
+        unassigned++;
+      } else {
+        // after intelsat paper from 2022
+        LOG ("elevated literal %d on level %d", lit, v.level);
+        assert (opts.chrono);
+        elevated++;
+      }
+    }
+  }
+
+  LOG ("unassigned %d literals %.0f%%", unassigned,
+       percent (unassigned, unassigned + elevated));
+  LOG ("elevated %d literals %.0f%%", elevated,
+       percent (elevated, unassigned + elevated));
+  stats.elevated += elevated;
+
+  clear_trails (new_level);
+  multitrail.resize (new_level);
   control.resize (new_level + 1);
   level = new_level;
 }

@@ -56,8 +56,6 @@ public:
 
   // Add/delete original clauses to/from the proof using their original
   //  external literals (from external->eclause)
-  // TODO: add ids...
-  //
   void add_external_original_clause (uint64_t, const vector<int> &);
   void delete_external_original_clause (uint64_t, const vector<int> &);
 
@@ -83,7 +81,7 @@ public:
   void finalize_external_unit (uint64_t, int);
   void finalize_clause (uint64_t, const vector<int> &c);
   void finalize_clause (Clause *);
-  
+
   void finalize_proof (uint64_t);
   void set_first_id (uint64_t);
 

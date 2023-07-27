@@ -10,15 +10,19 @@ Internal::Internal ()
       localsearching (false), lookingahead (false), preprocessing (false),
       protected_reasons (false), force_saved_phase (false),
       searching_lucky_phases (false), stable (false), reported (false),
-      external_prop (false), external_prop_is_lazy (true), rephased (0),
-      vsize (0), max_var (0), clause_id (0), original_id (0), reserved_ids (0),
-      conflict_id (0), level (0), vals (0), score_inc (1.0), scores (this),
-      conflict (0), ignore (0), external_reason (&external_reason_clause),
-      newest_clause (0), force_no_backtrack (false), from_propagator (false),
-      notified (0), propagated (0), propagated2 (0), propergated (0),
-      best_assigned (0), target_assigned (0), no_conflict_until (0),
-      unsat_constraint (false), marked_failed (true), proof (0),
-      checker (0), tracer (0), lratchecker (0), lratbuilder (0),
+      rephased (0),
+      vsize (0), max_var (0), clause_id (0), original_id (0),
+      reserved_ids (0), conflict_id (0), level (0), vals (0),
+      score_inc (1.0), scores (this), conflict (0), ignore (0),
+      external_reason (&external_reason_clause), newest_clause (0),
+      force_no_backtrack (false), from_propagator (false),
+      tainted_literal (0), notified (0),
+      probe_reason (0),
+      propagated (0), propagated2 (0), propergated (0), best_assigned (0),
+      target_assigned (0),
+      no_conflict_until (0), unsat_constraint (false), marked_failed (true),
+      multitrail_dirty (false), num_assigned (0),
+      proof (0), checker (0), tracer (0), lratchecker (0), lratbuilder (0),
       opts (this),
 #ifndef QUIET
       profiles (this), force_phase_messages (false),
@@ -46,6 +50,7 @@ Internal::~Internal () {
     vals -= vsize;
     delete[] vals;
   }
+  clear_trails (0);
 }
 
 /*------------------------------------------------------------------------*/
@@ -174,10 +179,7 @@ void Internal::add_original_lit (int lit) {
       // Use the external form of the clause for printing in proof
       // Externalize(internalized literal) != external literal
       assert (!original.size () || !external->eclause.empty ());
-      if (opts.lrat)
-        proof->add_external_original_clause (id, external->eclause);
-      else
-        proof->add_external_original_clause (id, external->eclause);
+      proof->add_external_original_clause (id, external->eclause);
     }
     add_new_original_clause (id);
     original.clear ();
@@ -218,7 +220,7 @@ int Internal::cdcl_loop_with_inprocessing () {
       res = 20;
     else if (unsat_constraint)
       res = 20;
-    else if (conflict || !propagate ())
+    else if (!propagate ())
       analyze (); // propagate and analyze
     else if (iterating)
       iterate ();                               // report learned unit

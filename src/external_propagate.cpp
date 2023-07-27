@@ -1,6 +1,5 @@
 #include "internal.hpp"
 
-
 namespace CaDiCaL {
 
 /*----------------------------------------------------------------------------*/
@@ -53,6 +52,30 @@ void Internal::remove_observed_var (int ilit) {
 //
 bool Internal::observed (int ilit) const {
   return relevanttab[vidx (ilit)] > 0;
+}
+
+/*----------------------------------------------------------------------------*/
+//
+// Check for unexplained propagations upon disconnecting external propagator
+//
+void Internal::set_tainted_literal () {
+  if (!opts.ilb) {
+    return;
+  }
+  for (auto idx : vars) {
+    if (!val (idx))
+      continue;
+    if (var (idx).reason != external_reason)
+      continue;
+    if (!tainted_literal) {
+      tainted_literal = idx;
+      continue;
+    }
+    assert (val (tainted_literal));
+    if (var (idx).level < var (tainted_literal).level) {
+      tainted_literal = idx;
+    }
+  }
 }
 
 /*----------------------------------------------------------------------------*/
@@ -283,7 +306,8 @@ void Internal::move_literal_to_watch (bool other_watch) {
 // In every other cases a new clause is constructed and the pointer is in
 // newest_clause
 //
-void Internal::add_external_clause (int propagated_elit, bool no_backtrack) {
+void Internal::add_external_clause (int propagated_elit,
+                                    bool no_backtrack) {
   assert (original.empty ());
   int elit = 0;
 
@@ -299,7 +323,7 @@ void Internal::add_external_clause (int propagated_elit, bool no_backtrack) {
   assert (clause.empty ());
   assert (original.empty ());
   assert (lrat_chain.empty ());
-  
+
   assert (!force_no_backtrack);
   assert (!from_propagator);
   force_no_backtrack = no_backtrack;
@@ -308,7 +332,8 @@ void Internal::add_external_clause (int propagated_elit, bool no_backtrack) {
     assert (external->is_observed[abs (elit)]);
     external->add (elit);
     if (propagated_elit)
-      elit = external->propagator->cb_add_reason_clause_lit (propagated_elit);
+      elit =
+          external->propagator->cb_add_reason_clause_lit (propagated_elit);
     else
       elit = external->propagator->cb_add_external_clause_lit ();
   }
@@ -472,7 +497,8 @@ void Internal::handle_external_clause (Clause *res) {
   if (from_propagator)
     stats.ext_prop.elearned++;
 
-  if (!level) return;
+  if (!level)
+    return;
   if (!res) {
     if (from_propagator)
       stats.ext_prop.elearn_prop++;
@@ -495,7 +521,7 @@ void Internal::handle_external_clause (Clause *res) {
   }
   const int l0 = var (pos0).level;
   const int l1 = var (pos1).level;
-  if (val (pos0) < 0) {    // conflicting or propagating clause
+  if (val (pos0) < 0) { // conflicting or propagating clause
     assert (0 < l1 && l1 <= l0);
     if (!opts.chrono) {
       backtrack (l1);
@@ -503,7 +529,7 @@ void Internal::handle_external_clause (Clause *res) {
     if (val (pos0) < 0) {
       conflict = res;
       if (!from_propagator)
-        analyze ();  // TODO: is it good to do conflict analysis?
+        analyze (); // TODO: is it good to do conflict analysis?
     } else {
       search_assign_driving (pos0, res);
     }
@@ -511,7 +537,7 @@ void Internal::handle_external_clause (Clause *res) {
       stats.ext_prop.elearn_conf++;
     return;
   }
-  if (val (pos1) < 0 && !val (pos0)) {  // propagating clause
+  if (val (pos1) < 0 && !val (pos0)) { // propagating clause
     if (!opts.chrono) {
       backtrack (l1);
     }

@@ -134,6 +134,16 @@ bool Internal::flip (int lit) {
     Var &v = var (idx);
     assert (trail[v.trail] == lit);
     trail[v.trail] = -lit;
+    if (opts.ilb) {
+      if (!tainted_literal)
+        tainted_literal = lit;
+      else {
+        assert (val (tainted_literal));
+        if (v.level < var (tainted_literal).level) {
+          tainted_literal = lit;
+        }
+      }
+    }
   } else
     LOG ("flipping value of %d failed", lit);
 

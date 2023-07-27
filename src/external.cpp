@@ -167,9 +167,9 @@ void External::add (int elit) {
     }
   }
 
-  if (!elit && internal->proof &&
-    internal->opts.lrat && !internal->opts.lratexternal) {
-    for (const auto & elit : eclause) {
+  if (!elit && internal->proof && internal->opts.lrat &&
+      !internal->opts.lratexternal) {
+    for (const auto &elit : eclause) {
       ext_flags[abs (elit)] = false;
     }
   }

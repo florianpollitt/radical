@@ -299,6 +299,8 @@ inline void Internal::probe_assign (int lit, int parent) {
   Var &v = var (idx);
   v.level = level;
   v.trail = (int) trail.size ();
+  assert ((int) num_assigned < max_var);
+  num_assigned++;
   v.reason = level ? probe_reason : 0;
   probe_reason = 0;
   set_parent_reason_literal (lit, parent);

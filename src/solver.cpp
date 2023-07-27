@@ -858,6 +858,7 @@ void Solver::disconnect_external_propagator () {
     external->reset_observed_vars ();
 
   external->propagator = 0;
+  internal->set_tainted_literal ();
   internal->external_prop = false;
   internal->external_prop_is_lazy = true;
   LOG_API_CALL_END ("disconnect_external_propagator");

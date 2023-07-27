@@ -332,6 +332,7 @@ void Internal::assign_original_unit (uint64_t id, int lit) {
   const unsigned uidx = vlit (lit);
   unit_clauses[uidx] = id;
   LOG ("original unit assign %d", lit);
+  num_assigned++;
   mark_fixed (lit);
   if (propagate ())
     return;
@@ -340,12 +341,22 @@ void Internal::assign_original_unit (uint64_t id, int lit) {
 }
 
 // New clause added through the API, e.g., while parsing a DIMACS file.
-// Also used by external_propagate
-// Assumes that the internalized literals of the new clause are in original
-// puts the pointer to the new clause to newest_clause
-// if one is constructed, 0 otherwise.
+// Also used by external_propagate in various different modes.
+// clause, original, lrat_chain and external->eclause are set.
+// from_propagator and force_no_backtrack change the behaviour.
+// sometimes the pointer to the new clause is needed, therefore it is
+// made sure that newest_clause points to the new clause upon return.
 //
 void Internal::add_new_original_clause (uint64_t id) {
+  if (!from_propagator && !opts.ilb && level) {
+    backtrack ();
+  } else if (tainted_literal) {
+    assert (val (tainted_literal));
+    int new_level = var (tainted_literal).level - 1;
+    assert (new_level >= 0);
+    backtrack (new_level);
+  }
+  assert (!tainted_literal);
   LOG (original, "original clause");
   assert (clause.empty ());
   bool skip = false;
@@ -356,7 +367,7 @@ void Internal::add_new_original_clause (uint64_t id) {
     LOG ("skipping clause since formula already inconsistent");
     skip = true;
   } else {
-    // assert (lrat_chain.empty ());
+    assert (clause.empty ());
     for (const auto &lit : original) {
       int tmp = marked (lit);
       if (tmp > 0) {
@@ -371,7 +382,7 @@ void Internal::add_new_original_clause (uint64_t id) {
           LOG ("removing falsified literal %d", lit);
           if (opts.lrat && !opts.lratexternal) {
             int elit = externalize (lit);
-            unsigned eidx = (elit > 0) + 2u * (unsigned) abs (elit);      
+            unsigned eidx = (elit > 0) + 2u * (unsigned) abs (elit);
             if (!external->ext_units[eidx]) {
               uint64_t uid = (unit_clauses[vlit (-lit)]);
               assert (uid);
@@ -417,13 +428,11 @@ void Internal::add_new_original_clause (uint64_t id) {
           proof->add_derived_clause (new_id, clause, lrat_chain);
         } else
           proof->add_derived_clause (new_id, clause);
-        if (opts.lrat)
-          proof->delete_external_original_clause (id, external->eclause);
-        else
-          proof->delete_external_original_clause (id, external->eclause);
+        proof->delete_external_original_clause (id, external->eclause);
       }
       external->check_learned_clause ();
     }
+    external->eclause.clear ();
     lrat_chain.clear ();
     if (!size) {
       if (from_propagator)

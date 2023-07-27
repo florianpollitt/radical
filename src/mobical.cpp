@@ -3821,7 +3821,8 @@ int Mobical::main (int argc, char **argv) {
   terminal.normal ();
   prefix ();
   terminal.magenta (1);
-  fputs ("Copyright (c) 2018-2023 A. Biere, M. Fleury, N. Froleyks, K. Fazekas\n",
+  fputs ("Copyright (c) 2018-2023 A. Biere, M. Fleury, N. Froleyks, K. "
+         "Fazekas\n",
          stderr);
   terminal.normal ();
   empty_line ();

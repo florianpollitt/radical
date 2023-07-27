@@ -47,7 +47,6 @@ void Internal::learn_unit_clause (int lit) {
   mark_fixed (lit);
 }
 
-
 /*------------------------------------------------------------------------*/
 
 // Move bumped variables to the front of the (VMTF) decision queue.  The
@@ -370,6 +369,7 @@ inline void Internal::bump_also_all_reason_literals () {
   for (const auto &lit : clause)
     bump_also_reason_literals (-lit, opts.bumpreasondepth + stable);
 }
+
 /*------------------------------------------------------------------------*/
 
 void Internal::clear_unit_analyzed_literals () {
@@ -592,24 +592,56 @@ inline int Internal::determine_actual_backtrack_level (int jump) {
          level - jump, opts.chronolevelim, res);
   } else if (opts.chronoreusetrail) {
 
-    int best_idx = 0, best_pos = 0;
+    int best_idx = 0, best_pos = 0, best_lvl = 0;
 
     if (use_scores ()) {
-      for (size_t i = control[jump + 1].trail; i < trail.size (); i++) {
-        const int idx = abs (trail[i]);
-        if (best_idx && !score_smaller (this) (best_idx, idx))
-          continue;
-        best_idx = idx;
-        best_pos = i;
+      if (!opts.reimply) {
+        for (size_t i = control[jump + 1].trail; i < trail.size (); i++) {
+          const int idx = abs (trail[i]);
+          if (best_idx && !score_smaller (this) (best_idx, idx))
+            continue;
+          best_idx = idx;
+          best_pos = i;
+        }
+      } else {
+        for (int l = jump + 1; l <= level; l++) {
+          const auto &t = next_trail (l);
+          for (size_t i = 0; i < t->size (); i++) {
+            const auto idx = abs ((*t)[i]);
+            if (var (idx).level < l)
+              continue;
+            if (best_idx && !score_smaller (this) (best_idx, idx))
+              continue;
+            best_idx = idx;
+            best_pos = i;
+            best_lvl = l;
+          }
+        }
       }
       LOG ("best variable score %g", score (best_idx));
     } else {
-      for (size_t i = control[jump + 1].trail; i < trail.size (); i++) {
-        const int idx = abs (trail[i]);
-        if (best_idx && bumped (best_idx) >= bumped (idx))
-          continue;
-        best_idx = idx;
-        best_pos = i;
+      if (!opts.reimply) {
+        for (size_t i = control[jump + 1].trail; i < trail.size (); i++) {
+          const int idx = abs (trail[i]);
+          if (best_idx && bumped (best_idx) >= bumped (idx))
+            continue;
+          best_idx = idx;
+          best_pos = i;
+        }
+      } else {
+        for (int l = jump + 1; l <= level; l++) {
+          const auto &t = next_trail (l);
+          for (size_t i = 0; i < t->size (); i++) {
+            const auto idx = abs ((*t)[i]);
+            if (var (idx).level < l)
+              continue;
+            if (best_idx && bumped (best_idx) >= bumped (idx))
+              continue;
+            best_idx = idx;
+            best_pos = i;
+            best_lvl = l;
+          }
+        }
       }
       LOG ("best variable bumped %" PRId64 "", bumped (best_idx));
     }
@@ -624,8 +656,15 @@ inline int Internal::determine_actual_backtrack_level (int jump) {
     // of the control frame one higher than at the result level.
     //
     res = jump;
-    while (res < level - 1 && control[res + 1].trail <= best_pos)
-      res++;
+    if (!opts.reimply)
+      while (res < level - 1 && control[res + 1].trail <= best_pos)
+        res++;
+    else {
+      if (best_lvl == level)
+        best_lvl = level - 1;
+      assert (0 < best_lvl && best_lvl < level);
+      res = best_lvl;
+    }
 
     if (res == jump)
       LOG ("default non-chronological back-jumping to level %d", res);
@@ -638,6 +677,9 @@ inline int Internal::determine_actual_backtrack_level (int jump) {
     res = jump;
     LOG ("non-chronological back-jumping to level %d", res);
   }
+
+  if (opts.reimply && res != jump)
+    multitrail_dirty = true;
 
   return res;
 }
@@ -855,12 +897,11 @@ void Internal::analyze () {
   assert (unit_chain.empty ());
   assert (unit_analyzed.empty ());
   assert (clause.empty ());
-  
 
   // First update moving averages of trail height at conflict.
   //
-  UPDATE_AVERAGE (averages.current.trail.fast, trail.size ());
-  UPDATE_AVERAGE (averages.current.trail.slow, trail.size ());
+  UPDATE_AVERAGE (averages.current.trail.fast, num_assigned);
+  UPDATE_AVERAGE (averages.current.trail.slow, num_assigned);
 
   /*----------------------------------------------------------------------*/
 
@@ -956,9 +997,13 @@ void Internal::analyze () {
   assert (clause.empty ());
   assert (lrat_chain.empty ());
 
-  int i = trail.size ();   // Start at end-of-trail.
-  int open = 0;            // Seen but not processed on this level.
-  int uip = 0;             // The first UIP literal.
+  // for multitrail we only need to analyze the trail with the conflicting
+  // level which is also level because we backtracked earlier.
+
+  const auto &t = next_trail (level);
+  int i = t->size (); // Start at end-of-trail.
+  int open = 0;       // Seen but not processed on this level.
+  int uip = 0;        // The first UIP literal.
   int resolvent_size = 0;  // without the uip
   int antecedent_size = 1; // with the uip and without unit literals
   int conflict_size =
@@ -1019,7 +1064,7 @@ void Internal::analyze () {
     uip = 0;
     while (!uip) {
       assert (i > 0);
-      const int lit = trail[--i];
+      const int lit = (*t)[--i];
       if (!flags (lit).seen)
         continue;
       if (var (lit).level == level)
