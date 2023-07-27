@@ -170,7 +170,7 @@ void Internal::backtrack (int new_level) {
 
 void Internal::multi_backtrack (int new_level) {
 
-  assert (opts.multitrail);
+  assert (opts.reimply);
   assert (0 <= new_level && new_level < level);
 
   LOG ("backtracking on multitrail to decision level %d with decision %d",

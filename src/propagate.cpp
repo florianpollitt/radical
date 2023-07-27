@@ -124,7 +124,7 @@ inline void Internal::elevate_lit (int lit, Clause *reason) {
   assert (lit_level < v.level);
   LOG (reason, "elevated %d @ %d to %d", lit, v.level, lit_level);
   if (!lit_level) {
-    build_chain_for_units (lit, reason);
+    build_chain_for_units (lit, reason, 0);
     learn_unit_clause (lit); // increases 'stats.fixed'
     reason = 0;
     lrat_chain.clear ();
@@ -272,7 +272,7 @@ void Internal::search_assign_external (int lit) {
 // more bytes for each clause.
 
 bool Internal::propagate () {
-  if (opts.multitrail)
+  if (opts.reimply)
     return propagate_clean ();
 
   if (level)
@@ -621,7 +621,7 @@ void Internal::propergate () {
 bool Internal::propagate_conflicts () {
   if (conflicts.empty ())
     return true;
-  assert (opts.multitrail);
+  assert (opts.reimply);
 
   LOG ("propagating conflicts");
 
@@ -667,7 +667,7 @@ bool Internal::propagate_conflicts () {
       if (val (first) > 0)
         elevate_lit (first, c);
       else {
-        build_chain_for_units (first, c);
+        build_chain_for_units (first, c, 0);
         search_assign (first, c);
       }
 
@@ -777,9 +777,9 @@ bool Internal::propagate_multitrail () {
     const auto &t = next_trail (proplevel);
     int64_t before = next_propagated (proplevel);
     size_t current = before;
-    const bool ismultitrail = opts.multitrail;
+    const bool ismultitrail = opts.reimply;
     while (!conflict && current != t->size ()) {
-      assert (opts.multitrail || t == &trail);
+      assert (opts.reimply || t == &trail);
       LOG ("propagating level %d from %zd to %zd", proplevel, before,
            t->size ());
 
@@ -843,7 +843,7 @@ bool Internal::propagate_multitrail () {
             conflict = propagation_conflict (proplevel,
                                              w.clause); // but continue ...
           else {
-            build_chain_for_units (w.blit, w.clause);
+            build_chain_for_units (w.blit, w.clause, 0);
             search_assign (w.blit, w.clause);
             // lrat_chain.clear (); done in search_assign
           }
@@ -1018,7 +1018,7 @@ bool Internal::propagate_multitrail () {
               // The other watch is unassigned ('!u') and all other literals
               // assigned to false (still 'v < 0'), thus we found a unit.
               //
-              build_chain_for_units (other, w.clause);
+              build_chain_for_units (other, w.clause, 0);
               search_assign (other, w.clause);
               // lrat_chain.clear (); done in search_assign
 
@@ -1033,10 +1033,10 @@ bool Internal::propagate_multitrail () {
               // either.
               //
               // this is actually necessary to preserve the invariant for
-              // opts.multitrail. otherwise the watches break if we
+              // opts.reimply. otherwise the watches break if we
               // backtrack.
 
-              if (opts.multitrail ||
+              if (opts.reimply ||
                   opts.chrono > 1) { // ... always do some variant ...
 
                 const int other_level = var (other).level;
@@ -1190,7 +1190,7 @@ bool Internal::propagate_clean () {
       return res;
   }
 
-  assert (opts.multitrail && !multitrail_dirty && conflicts.empty ());
+  assert (opts.reimply && !multitrail_dirty && conflicts.empty ());
 
   if (level)
     require_mode (SEARCH);
@@ -1257,7 +1257,7 @@ bool Internal::propagate_clean () {
         if (b < 0)
           conflict = w.clause; // but continue ...
         else {
-          build_chain_for_units (w.blit, w.clause);
+          build_chain_for_units (w.blit, w.clause, 0);
           search_assign (w.blit, w.clause);
           // lrat_chain.clear (); done in search_assign
         }
@@ -1355,7 +1355,7 @@ bool Internal::propagate_clean () {
             // The other watch is unassigned ('!u') and all other literals
             // assigned to false (still 'v < 0'), thus we found a unit.
             //
-            build_chain_for_units (other, w.clause);
+            build_chain_for_units (other, w.clause, 0);
             search_assign (other, w.clause);
             // lrat_chain.clear (); done in search_assign
 

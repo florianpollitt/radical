@@ -203,7 +203,7 @@ struct Internal {
   vector<Bins> big;             // binary implication graph
   vector<Watches> wtab;         // table of watches for all literals
   Clause *conflict;             // set in 'propagation', reset in 'analyze'
-  vector<Clause *> conflicts;   // set in propagate for opts.multitrail
+  vector<Clause *> conflicts;   // set in propagate for opts.reimply
   Clause *ignore;               // ignored during 'vivify_propagate'
   Clause *external_reason;      // used as reason at external propagations
   Clause *newest_clause;        // used in external_propagate
@@ -913,11 +913,6 @@ struct Internal {
       return;
     LOG ("marking %d to be skipped as blocking literal", lit);
     f.skip |= bit;
-  }
-  void unmark_block (int lit) {
-    Flags &f = flags (lit);
-    const unsigned bit = bign (lit);
-    f.block &= ~bit;
   }
   bool marked_skip (int lit) {
     const Flags &f = flags (lit);

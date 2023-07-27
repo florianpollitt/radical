@@ -99,8 +99,8 @@ int inline Internal::shrink_literal (int lit, int blevel,
   f.poison = false;
   shrinkable.push_back (lit);
   if (opts.shrinkreap) { // different assertion for multitrail
-    assert (!opts.multitrail || max_trail < trails[blevel - 1].size ());
-    assert (opts.multitrail || max_trail < trail.size ());
+    assert (!opts.reimply || max_trail < trails[blevel - 1].size ());
+    assert (opts.reimply || max_trail < trail.size ());
     const unsigned dist = max_trail - v.trail;
     reap.push (dist);
   }
