@@ -176,7 +176,7 @@ void Internal::multi_backtrack (int new_level) {
   LOG ("backtracking on multitrail to decision level %d with decision %d",
        new_level, control[new_level].decision);
 
-  int elevated = 0, unassigned = 0;
+  int elevated = 0, unassigned = 0, notify_level = new_level;
 
   for (int i = new_level; i < level; i++) {
     assert (level > 0);
@@ -200,8 +200,10 @@ void Internal::multi_backtrack (int new_level) {
       } else {
         // after intelsat paper from 2022
         LOG ("elevated literal %d on level %d", lit, v.level);
-        assert (opts.chrono);
+        // assert (opts.chrono); probably not true anymore...
         elevated++;
+        if (v.level < notify_level)
+          notify_level = v.level;
       }
     }
   }
@@ -211,11 +213,21 @@ void Internal::multi_backtrack (int new_level) {
   LOG ("elevated %d literals %.0f%%", elevated,
        percent (elevated, unassigned + elevated));
   stats.elevated += elevated;
+  
+  notify_backtrack (notify_level);
+  if (elevated)
+    notify_assignments ();
 
   clear_trails (new_level);
   multitrail.resize (new_level);
   control.resize (new_level + 1);
   level = new_level;
+  if (tainted_literal) {
+    assert (opts.ilb);
+    if (!val (tainted_literal)) {
+      tainted_literal = 0;
+    }
+  }
 }
 
 } // namespace CaDiCaL

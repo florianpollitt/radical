@@ -677,6 +677,7 @@ void Internal::notify_assignments () {
   if (!external_prop || external_prop_is_lazy)
     return;
 
+  // TODO: multitrail
   const size_t end_of_trail = trail.size ();
   if (notified < end_of_trail)
     LOG ("notify external propagator about new assignments");
