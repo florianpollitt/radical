@@ -118,9 +118,9 @@ bool Internal::external_propagate () {
   if (!conflict && external_prop && !external_prop_is_lazy) {
 #ifndef NDEBUG
     if (opts.reimply)
-      LOG ("External propagation starts (decision level: %d, notified level %d, "
+      LOG ("External propagation starts (decision level: %d, notified level %zd, "
            "notified %zd)",
-           level, notified_level, notified);
+           level, notify_trail.size (), notified);
     else
       LOG ("external propagation starts (decision level: %d, trail size: "
            "%zd, notified %zd)",
@@ -183,9 +183,9 @@ bool Internal::external_propagate () {
 
 #ifndef NDEBUG
     if (opts.reimply)
-      LOG ("External propagation ends (decision level: %d, notified level %d, "
+      LOG ("External propagation ends (decision level: %d, notified level %zd, "
            "notified %zd)",
-           level, notified_level, notified);
+           level, notify_trail.size (), notified);
     else
       LOG ("External propagation ends (decision level: %d, trail size: %zd, "
            "notified %zd)",
@@ -228,9 +228,9 @@ bool Internal::external_propagate () {
     }
 #ifndef NDEBUG
     if (opts.reimply)
-      LOG ("External clause addition ends (decision level %d, notified level %d, "
+      LOG ("External clause addition ends (decision level %d, notified level %zd, "
            "notified %zd)",
-           level, notified_level, notified);
+           level, notify_trail.size (), notified);
     else
       LOG ("External clause addition ends on decision level %d at trail size "
            "%zd (notified %zd)",
@@ -710,34 +710,19 @@ void Internal::notify_assignments () {
   }
   // TODO: multitrail
   assert (opts.reimply);
-  if (!level || notified_level >= level) {
-    return;
-  }
-  const auto & t = next_trail (notified_level + 1);
-  const size_t end_of_trail = t->size ();
+  const size_t end_of_trail = notify_trail.size ();
+  if (notified < end_of_trail)
+    LOG ("notify external propagator about new assignments");
   while (notified < end_of_trail) {
-    int lit = (*t)[notified++];
-    assert (!fixed (lit));
-    if (!observed (lit)) continue;
-    Var & v = var (lit);
-    assert (v.level == level);
-    if (v.level != notified_level + 1) continue;
-    int elit = externalize (lit);
+    int ilit = notify_trail[notified++];
+    if (fixed (ilit) || !observed (ilit))
+      continue; // fixed literals are notified eagerly in mark_fixed, not
+                // here
+    int elit = externalize (ilit); // TODO: double-check tainting
+    assert (elit);
+    assert (external->observed (elit));
     external->propagator->notify_assignment (elit, false);
   }
-  for (int l = notified_level + 2; l <= level; l++) {
-    const auto & t = next_trail (l);
-    for (const auto & lit : *t) {
-      assert (!fixed (lit));
-      if (!observed (lit)) continue;
-      Var & v = var (lit);
-      if (v.level != l) continue;
-      int elit = externalize (lit);
-      external->propagator->notify_assignment (elit, false);
-    }
-  }
-  notified = trails[level-1].size ();
-  notified_level = level-1;
 }
 
 /*----------------------------------------------------------------------------*/

@@ -396,7 +396,6 @@ void External::reset_observed_vars () {
     is_observed[eidx] = false;
   }
   internal->notified = 0;
-  internal->notified_level = 0;
   LOG ("reset notified counter to 0");
 }
 

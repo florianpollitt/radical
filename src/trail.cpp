@@ -11,7 +11,7 @@ void Internal::new_trail_level (int lit) {
     return;
   assert (opts.reimply);
   multitrail.push_back (0);
-  control.back ().trail = 0;
+  control.back ().trail = notify_trail.size ();
   size_t reserving = 0;
   if (level < 50)
     reserving = max_var / 10;

@@ -198,6 +198,9 @@ inline void Internal::search_assign (int lit, Clause *reason) {
   if (!searching_lucky_phases)
     phases.saved[idx] = tmp; // phase saving during search
   trail_push (lit, lit_level);
+  if (external_prop && !external_prop_is_lazy) {
+    notify_trail.push_back (lit);
+  }
 #ifdef LOGGING
   if (!lit_level)
     LOG ("root-level unit assign %d @ 0", lit);

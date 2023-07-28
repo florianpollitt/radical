@@ -513,7 +513,6 @@ void Internal::compact () {
   best_assigned = new_best_assigned;
   no_conflict_until = 0;
   notified = 0;
-  notified_level = 0;
 
   INIT_EMA (averages.current.trail.fast, opts.ematrailfast);
   INIT_EMA (averages.current.trail.slow, opts.ematrailslow);

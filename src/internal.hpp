@@ -210,9 +210,9 @@ struct Internal {
   bool force_no_backtrack;      // for new clauses with external propagator
   bool from_propagator;         // differentiate new clauses...
   int tainted_literal;          // used for ILB
-  vector<Clause *> fix_later;   // for multitrail + external propagator
+  vector<Clause *> fix_later;   // for reimply + external propagator
+  vector<int> notify_trail;      // for reimply + external propagator
   size_t notified;              // next trail position to notify external prop
-  int notified_level;           // for reimply
   Clause *probe_reason;         // set during probing
   size_t propagated;            // next trail position to propagate
   size_t propagated2;         // next binary trail position to propagate
