@@ -118,7 +118,7 @@ bool Internal::external_propagate () {
   if (!conflict && external_prop && !external_prop_is_lazy) {
 #ifndef NDEBUG
     if (opts.reimply)
-      LOG ("External propagation starts (decision level: %d, notified level %zd, "
+      LOG ("External propagation starts (decision level: %d, notified trail %zd, "
            "notified %zd)",
            level, notify_trail.size (), notified);
     else
@@ -158,13 +158,13 @@ bool Internal::external_propagate () {
              ilit);
         stats.ext_prop.eprop_conf++;
         int level_before = level;
-        size_t assigned = trail.size ();
+        size_t assigned = num_assigned;
         Clause *res = learn_external_reason_clause (ilit, elit);
 #ifndef LOGGING
         LOG (res, "reason clause of external propagation of %d:", elit);
 #endif
         bool trail_changed =
-            (trail.size () != assigned || level != level_before);
+            (num_assigned != assigned || level != level_before || multitrail_dirty);
 
         if (unsat || conflict)
           break;
@@ -183,7 +183,7 @@ bool Internal::external_propagate () {
 
 #ifndef NDEBUG
     if (opts.reimply)
-      LOG ("External propagation ends (decision level: %d, notified level %zd, "
+      LOG ("External propagation ends (decision level: %d, notified trail %zd, "
            "notified %zd)",
            level, notify_trail.size (), notified);
     else
@@ -205,11 +205,11 @@ bool Internal::external_propagate () {
 
       while (has_external_clause) {
         int level_before = level;
-        size_t assigned = trail.size ();
+        size_t assigned = num_assigned;
 
         add_external_clause (0);
         bool trail_changed =
-            (assigned != trail.size () || level != level_before);
+            (num_assigned != assigned || level != level_before || multitrail_dirty);
 
         if (unsat || conflict)
           break;
@@ -228,7 +228,7 @@ bool Internal::external_propagate () {
     }
 #ifndef NDEBUG
     if (opts.reimply)
-      LOG ("External clause addition ends (decision level %d, notified level %zd, "
+      LOG ("External clause addition ends (decision level %d, notified trail %zd, "
            "notified %zd)",
            level, notify_trail.size (), notified);
     else
@@ -416,26 +416,48 @@ void Internal::explain_external_propagations () {
   assert (clause.empty ());
 
   Clause *reason = conflict;
-  int i = trail.size (); // Start at end-of-trail
-  int open = 0;          // Seen but not explained literal
-
-  explain_reason (0, reason, open); // marks conflict clause lits as seen
   std::vector<int> seen_lits;
-
-  while (i > 0) {
-    const int lit = trail[--i];
-    if (!flags (lit).seen)
-      continue;
-    seen_lits.push_back (lit);
-    Var &v = var (lit);
-    if (!v.level)
-      continue;
-    if (v.reason) {
-      open--;
-      explain_reason (lit, v.reason, open);
+  int open = 0;          // Seen but not explained literal
+  explain_reason (0, reason, open); // marks conflict clause lits as seen
+  if (!opts.reimply) {
+  
+    int i = trail.size (); // Start at end-of-trail
+    while (i > 0) {
+      const int lit = trail[--i];
+      if (!flags (lit).seen)
+        continue;
+      seen_lits.push_back (lit);
+      Var &v = var (lit);
+      if (!v.level)
+        continue;
+      if (v.reason) {
+        open--;
+        explain_reason (lit, v.reason, open);
+      }
+      if (!open)
+        break;
     }
-    if (!open)
-      break;
+  } else {
+    for (int l = level; l >= 0; l--) {
+      const auto & t = next_trail (l);
+      for (auto p = (*t).rbegin (); p != (*t).rend (); p++) {
+        const int lit = *p;
+        if (!flags (lit).seen)
+          continue;
+        seen_lits.push_back (lit);
+        Var &v = var (lit);
+        if (!v.level)
+          continue;
+        if (v.reason) {
+          open--;
+          explain_reason (lit, v.reason, open);
+        }
+        if (!open)
+          break;
+      }
+      if (!open)
+        break;
+    }
   }
   assert (!open);
   // Traverse now in the opposite direction (from lower to higher levels)
@@ -457,8 +479,15 @@ void Internal::explain_external_propagations () {
         build_chain_for_units (lit, v.reason, 1);
         learn_unit_clause (lit);
         lrat_chain.clear ();
+        v.reason = 0;
       }
-      v.level = real_level;
+      assert (v.level >= real_level);
+      if (v.level > real_level) {
+        v.level = real_level;
+        if (opts.reimply) {
+          trail_push (lit, real_level);
+        }
+      }
     }
     f.seen = false;
   }
@@ -520,7 +549,9 @@ void Internal::handle_external_clause (Clause *res) {
     // new unit clause. For now just backtrack.
     assert (!force_no_backtrack);
     assert (level);
-    backtrack ();
+    if (!opts.reimply) {
+      backtrack ();
+    }
     return;
   }
   if (from_propagator)
@@ -560,6 +591,10 @@ void Internal::handle_external_clause (Clause *res) {
     if (from_propagator)
       stats.ext_prop.elearn_conf++;
     return;
+  }
+  else if (val (pos1) < 0 && opts.reimply) {
+    assert (val (pos0) > 0);
+    elevate_lit_external (pos0, res);
   }
 }
 
@@ -641,10 +676,10 @@ bool Internal::external_check_solution () {
 
     while (has_external_clause) {
       int level_before = level;
-      size_t assigned = trail.size ();
+      size_t assigned = num_assigned;
       add_external_clause (0);
       bool trail_changed =
-          (assigned != trail.size () || level != level_before);
+          (num_assigned != assigned || level != level_before || multitrail_dirty);
       added_new_clauses = true;
       //
       // There are many possible scenarios here:
@@ -710,6 +745,7 @@ void Internal::notify_assignments () {
   }
   // TODO: multitrail
   assert (opts.reimply);
+  LOG (notify_trail, "notify_trail");
   const size_t end_of_trail = notify_trail.size ();
   if (notified < end_of_trail)
     LOG ("notify external propagator about new assignments");
@@ -758,7 +794,7 @@ int Internal::ask_decision () {
 
   if (!elit)
     return 0;
-  LOG ("external propagator wants to proposes a decision: %d", elit);
+  LOG ("external propagator wants to propose a decision: %d", elit);
   assert (external->is_observed[abs (elit)]);
   if (!external->is_observed[abs (elit)])
     return 0;

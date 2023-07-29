@@ -176,7 +176,7 @@ inline void Internal::search_assign (int lit, Clause *reason) {
     lit_level = 0; // unit
   else if (reason == decision_reason)
     lit_level = level, reason = 0;
-  else if (opts.chrono)
+  else if (opts.chrono || opts.reimply)
     lit_level = assignment_level (lit, reason);
   else
     lit_level = level;
@@ -198,7 +198,7 @@ inline void Internal::search_assign (int lit, Clause *reason) {
   if (!searching_lucky_phases)
     phases.saved[idx] = tmp; // phase saving during search
   trail_push (lit, lit_level);
-  if (external_prop && !external_prop_is_lazy) {
+  if (external_prop && !external_prop_is_lazy && opts.reimply) {
     notify_trail.push_back (lit);
   }
 #ifdef LOGGING
@@ -248,7 +248,7 @@ void Internal::assign_unit (int lit) {
 
 void Internal::search_assume_decision (int lit) {
   require_mode (SEARCH);
-  assert (propagated == trail.size ());
+  assert (!multitrail_dirty || propagated == trail.size ());
   new_trail_level (lit);
   notify_decision ();
   LOG ("search decide %d", lit);
@@ -266,6 +266,12 @@ void Internal::search_assign_external (int lit) {
   search_assign (lit, external_reason);
   notify_assignments ();
 }
+
+void Internal::elevate_lit_external (int lit, Clause *reason) {
+  assert (opts.reimply);
+  elevate_lit (lit, reason);
+}
+
 
 /*------------------------------------------------------------------------*/
 
@@ -549,6 +555,7 @@ bool Internal::propagate () {
 void Internal::propergate () {
 
   assert (!conflict);
+  if (opts.reimply) return propergate_reimply ();
   assert (propagated == trail.size ());
 
   while (propergated != trail.size ()) {
@@ -627,6 +634,89 @@ void Internal::propergate () {
   }
 }
 
+void Internal::propergate_reimply () {
+
+  assert (!conflict);
+  propergated = num_assigned;
+  
+  for (auto idx : vars) {
+    
+    const char tmp = val (idx);
+    assert (tmp);
+    assert (tmp == -1 || tmp == 1);
+    const int lit = (-tmp) * idx;
+    LOG ("propergating %d", -lit);
+    Watches &ws = watches (lit);
+
+    const const_watch_iterator eow = ws.end ();
+    watch_iterator j = ws.begin ();
+    const_watch_iterator i = j;
+
+    while (i != eow) {
+
+      const Watch w = *j++ = *i++;
+
+      if (w.binary ()) {
+        assert (val (w.blit) > 0);
+        continue;
+      }
+      if (w.clause->garbage) {
+        j--;
+        continue;
+      }
+
+      literal_iterator lits = w.clause->begin ();
+
+      const int other = lits[0] ^ lits[1] ^ lit;
+      const signed char u = val (other);
+
+      if (u > 0)
+        continue;
+      assert (u < 0);
+
+      const int size = w.clause->size;
+      const literal_iterator middle = lits + w.clause->pos;
+      const const_literal_iterator end = lits + size;
+      literal_iterator k = middle;
+
+      int r = 0;
+      signed char v = -1;
+
+      while (k != end && (v = val (r = *k)) < 0)
+        k++;
+
+      if (v < 0) {
+        k = lits + 2;
+        assert (w.clause->pos <= size);
+        while (k != middle && (v = val (r = *k)) < 0)
+          k++;
+      }
+
+      assert (lits + 2 <= k), assert (k <= w.clause->end ());
+      w.clause->pos = k - lits;
+
+      assert (v > 0);
+
+      LOG (w.clause, "unwatch %d in", lit);
+
+      lits[0] = other;
+      lits[1] = r;
+      *k = lit;
+
+      watch_literal (r, lit, w.clause);
+
+      j--;
+    }
+
+    if (j != i) {
+
+      while (i != eow)
+        *j++ = *i++;
+
+      ws.resize (j - ws.begin ());
+    }
+  }
+}
 // if we found multiple conflicts in the previous propagation we have to
 // process them in order to not miss any implications.
 // this entails fixing watches and possibly assigning or elevating literals.
@@ -766,7 +856,7 @@ bool Internal::propagate_multitrail () {
     require_mode (SEARCH);
   assert (!unsat);
   assert (!conflict);
-  assert (opts.chrono);
+  // assert (opts.chrono); ... or external propagator
   START (propagate);
 
   // first we have to fix watches in the previous conflicts (and possibly

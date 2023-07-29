@@ -214,10 +214,11 @@ void Internal::multi_backtrack (int new_level) {
   
   if (external_prop && !external_prop_is_lazy) {
     notify_backtrack (new_level);
+    notified = control[new_level+1].trail;
+    assert (notified <= notify_trail.size ());
     LOG ("external propagator is notified about some unassignments (trail: "
          "%zd, notified: %zd).",
          notify_trail.size (), notified);
-    notified = control[new_level + 1].trail;
     size_t i = notified, j = i;
     const size_t eot = notify_trail.size ();
     while (i != eot) {
@@ -225,13 +226,14 @@ void Internal::multi_backtrack (int new_level) {
       const int lit = notify_trail[i++];
       const char tmp = val (lit);
       assert (tmp >= 0);
-      if (tmp) continue;
+      if (!tmp) continue;
       notify_trail[j++] = lit;
     }
     notify_trail.resize (j);
     notify_assignments ();
   }
 
+  propergated = 0; // Always go back to root-level.
   clear_trails (new_level);
   multitrail.resize (new_level);
   control.resize (new_level + 1);

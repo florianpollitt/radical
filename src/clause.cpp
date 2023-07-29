@@ -314,13 +314,13 @@ void Internal::mark_garbage (Clause *c) {
 // to learn a new unit clause (which was confusing in log files).
 
 void Internal::assign_original_unit (uint64_t id, int lit) {
-  assert (!level);
+  assert (!level || opts.reimply);
   assert (!unsat);
   const int idx = vidx (lit);
   assert (!vals[idx]);
   assert (!flags (idx).eliminated ());
   Var &v = var (idx);
-  v.level = level;
+  v.level = 0;
   v.trail = (int) trail.size ();
   v.reason = 0;
   const signed char tmp = sign (lit);
@@ -329,13 +329,43 @@ void Internal::assign_original_unit (uint64_t id, int lit) {
   assert (val (lit) > 0);
   assert (val (-lit) < 0);
   trail.push_back (lit);
+  if (external_prop && !external_prop_is_lazy && opts.reimply) {
+    notify_trail.push_back (lit);
+  }
   const unsigned uidx = vlit (lit);
   unit_clauses[uidx] = id;
   LOG ("original unit assign %d", lit);
   num_assigned++;
   mark_fixed (lit);
+  if (level) return;
   if (propagate ())
     return;
+  assert (conflict);
+  LOG ("propagation of original unit results in conflict");
+  learn_empty_clause ();
+}
+
+void Internal::elevate_original_unit (uint64_t id, int lit) {
+  assert (level);
+  assert (opts.reimply);
+  assert (!unsat);
+  const int idx = vidx (lit);
+  assert (vals[idx] > 0);
+  assert (!flags (idx).eliminated ());
+  Var &v = var (idx);
+  v.level = 0;
+  v.trail = (int) trail.size ();
+  v.reason = 0;
+  assert (val (lit) > 0);
+  assert (val (-lit) < 0);
+  trail.push_back (lit);
+  const unsigned uidx = vlit (lit);
+  unit_clauses[uidx] = id;
+  LOG ("original unit elevation %d", lit);
+  mark_fixed (lit);
+  if (propagate ())
+    return;
+  assert (false);
   LOG ("propagation of original unit results in conflict");
   learn_empty_clause ();
 }
@@ -434,6 +464,8 @@ void Internal::add_new_original_clause (uint64_t id) {
     }
     external->eclause.clear ();
     lrat_chain.clear ();
+    if (opts.reimply && level)
+      multitrail_dirty = true;
     if (!size) {
       if (from_propagator)
         stats.ext_prop.elearn_conf++;
@@ -446,6 +478,11 @@ void Internal::add_new_original_clause (uint64_t id) {
       conflict_id = new_id;
     } else if (size == 1) {
       if (force_no_backtrack) {
+        assert (level);
+        /*
+        if (opts.reimply)
+          trail.push_back (clause[0]);
+        */
         const int idx = vidx (clause[0]);
         assert (vals[idx] >= 0);
         assert (!flags (idx).eliminated ());
@@ -456,8 +493,17 @@ void Internal::add_new_original_clause (uint64_t id) {
         unit_clauses[uidx] = new_id;
         mark_fixed (clause[0]);
       } else {
+        const int lit = clause[0];
+        assert (!val (lit) || var (lit).level);
+        if (val (lit) < 0) backtrack (var (lit).level - 1);
+        assert (val (lit) >= 0);
         handle_external_clause (0);
-        assign_original_unit (new_id, clause[0]);
+        if (val (lit)) {
+          assert (false);
+          assert (opts.reimply);
+          elevate_original_unit (new_id, lit);
+        } else
+          assign_original_unit (new_id, lit);
       }
     } else {
       move_literal_to_watch (false);
