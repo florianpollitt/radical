@@ -331,7 +331,7 @@ void Internal::compact () {
     assert (trail.empty ());
 
   if (opts.reimply) {
-    assert (notify_trail.size () == notified);
+    if (notify_trail.size () != notified) notify_assignments ();
     mapper.map_flush_and_shrink_lits (notify_trail);
     notified = notify_trail.size ();
   }
