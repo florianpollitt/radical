@@ -499,7 +499,6 @@ void Internal::add_new_original_clause (uint64_t id) {
         assert (val (lit) >= 0);
         handle_external_clause (0);
         if (val (lit)) {
-          assert (false);
           assert (opts.reimply);
           elevate_original_unit (new_id, lit);
         } else

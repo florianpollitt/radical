@@ -171,7 +171,7 @@ bool Internal::external_propagate () {
 
         if (trail_changed) {
           propagate ();
-          if (!unsat && !conflict)
+          if (unsat || conflict)
             break;
           notify_assignments ();
         }
@@ -450,7 +450,7 @@ void Internal::explain_external_propagations () {
           continue;
         seen_lits.push_back (lit);
         Var &v = var (lit);
-        if (!v.level)
+        if (!v.level || v.level != l)
           continue;
         if (v.reason) {
           open--;
@@ -497,8 +497,8 @@ void Internal::explain_external_propagations () {
   }
 
 #ifndef NDEBUG
-  for (const auto &lit : trail) {
-    assert (!flags (lit).seen);
+  for (auto idx : vars) {
+    assert (!flags (idx).seen);
   }
 #endif
 }

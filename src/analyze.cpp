@@ -908,7 +908,7 @@ void Internal::analyze () {
   if (external_prop && !external_prop_is_lazy)
     explain_external_propagations ();
 
-  if (opts.chrono || external_prop) {
+  if (opts.chrono || external_prop || opts.otfs) {
 
     int forced;
 

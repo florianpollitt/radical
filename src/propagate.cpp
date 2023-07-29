@@ -1262,8 +1262,7 @@ bool Internal::propagate_multitrail () {
     //
 
     if (!conflict) {
-      // TODO no_conflict_until = num_assigned below this level
-      // no_conflict_until = num_assigned;
+      no_conflict_until = trails_sizes (level - 1);
     } else {
 
       if (stable)
