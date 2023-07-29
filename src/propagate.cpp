@@ -63,7 +63,7 @@ void Internal::build_chain_for_units (int lit, Clause *reason,
     return;
   if (opts.chrono && assignment_level (lit, reason) && !forced)
     return;
-  else if (!opts.chrono && level && !forced)
+  else if (!opts.chrono && !opts.reimply && level && !forced)
     return; // not decision level 0
   assert (lrat_chain.empty ());
   for (auto &reason_lit : *reason) {
