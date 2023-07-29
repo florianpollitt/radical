@@ -383,6 +383,10 @@ void Internal::explain_reason (int ilit, Clause *reason, int &open) {
     assert (v.level <= level);
     if (v.reason == external_reason) {
       v.reason = learn_external_reason_clause (-other, 0, true);
+      if (!v.reason) {
+        assert (!v.level);
+        trail.push_back (-other);
+      }
     }
     if (v.level && v.reason) {
       f.seen = true;

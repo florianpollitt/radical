@@ -1043,6 +1043,7 @@ void Internal::analyze () {
               determine_actual_backtrack_level (conflict_level - 1);
           UPDATE_AVERAGE (averages.current.level, new_level);
           backtrack (new_level);
+          if (opts.reimply) multitrail_dirty = true;
 
           LOG ("forcing %d", forced);
           search_assign_driving (forced, conflict);

@@ -330,6 +330,12 @@ void Internal::compact () {
   } else
     assert (trail.empty ());
 
+  if (opts.reimply) {
+    assert (notify_trail.size () == notified);
+    mapper.map_flush_and_shrink_lits (notify_trail);
+    notified = notify_trail.size ();
+  }
+  
   if (!probes.empty ())
     mapper.map_flush_and_shrink_lits (probes);
 

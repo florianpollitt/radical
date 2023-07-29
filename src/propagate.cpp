@@ -37,7 +37,7 @@ static Clause *decision_reason = &decision_reason_clause;
 
 inline int Internal::assignment_level (int lit, Clause *reason) {
 
-  assert (opts.chrono || external_prop);
+  assert (opts.chrono || external_prop || opts.reimply);
   if (!reason || reason == external_reason)
     return level;
 
@@ -1294,6 +1294,14 @@ bool Internal::propagate_clean () {
     if (!res)
       return res;
   }
+
+#ifndef NDEBUG
+  if (level) {
+    for (int i = 0; i < level-1; i++) {
+      assert ((size_t) multitrail[i] == trails[i].size ());
+    }
+  }
+#endif
 
   assert (opts.reimply && !multitrail_dirty && conflicts.empty ());
 
