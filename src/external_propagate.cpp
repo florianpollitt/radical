@@ -489,7 +489,14 @@ void Internal::explain_external_propagations () {
       if (v.level > real_level) {
         v.level = real_level;
         if (opts.reimply) {
-          trail_push (lit, real_level);
+          if (!real_level) {
+            v.trail = trail.size ();
+            trail.push_back (lit);
+          }
+          else {
+            v.trail = trails[real_level - 1].size ();
+            trails[real_level - 1].push_back (lit);
+          }
         }
       }
     }
@@ -569,10 +576,9 @@ void Internal::handle_external_clause (Clause *res) {
     return;
     // TODO: maybe fix levels
   }
-  const int l0 = var (pos0).level;
   const int l1 = var (pos1).level;
   if (val (pos0) < 0) { // conflicting or propagating clause
-    assert (0 < l1 && l1 <= l0);
+    assert (0 < l1 && l1 <= var (pos0).level);
     if (!opts.chrono) {
       backtrack (l1);
     }

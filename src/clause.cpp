@@ -350,7 +350,7 @@ void Internal::elevate_original_unit (uint64_t id, int lit) {
   assert (opts.reimply);
   assert (!unsat);
   const int idx = vidx (lit);
-  assert (vals[idx] > 0);
+  assert (val (lit) > 0);
   assert (!flags (idx).eliminated ());
   Var &v = var (idx);
   v.level = 0;
@@ -363,11 +363,13 @@ void Internal::elevate_original_unit (uint64_t id, int lit) {
   unit_clauses[uidx] = id;
   LOG ("original unit elevation %d", lit);
   mark_fixed (lit);
+  /*
   if (propagate ())
     return;
   assert (false);
   LOG ("propagation of original unit results in conflict");
   learn_empty_clause ();
+  */
 }
 
 // New clause added through the API, e.g., while parsing a DIMACS file.
@@ -448,7 +450,7 @@ void Internal::add_new_original_clause (uint64_t id) {
     }
   } else {
     uint64_t new_id = id;
-    size_t size = clause.size ();
+    const size_t size = clause.size ();
     if (original.size () > size) {
       new_id = ++clause_id;
       if (proof) {
