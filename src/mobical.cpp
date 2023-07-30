@@ -367,7 +367,10 @@ public:
     add_new_observed_var ();
     if (must_add_clause) {
       assert (nof_added_clauses < nof_clauses);
+      if (!lemmas_per_queries[query_loc]) // TODO: bug with ext_prop or reimply?
+        query_loc++;
       assert (query_loc < lemmas_per_queries.size ());
+      assert (lemmas_per_queries[query_loc] > 0);
       lemmas_per_queries[query_loc]--;
       must_add_clause = false;
       return true;
@@ -543,6 +546,8 @@ class Mobical : public Handler {
   friend struct FlippableCall;
   friend struct MeltCall;
   friend class MockPropagator;
+  friend struct ConnectCall;
+  friend struct DisconnectCall;
 
   /*----------------------------------------------------------------------*/
 
@@ -637,6 +642,11 @@ class Mobical : public Handler {
   void die (const char *fmt, ...);
   void warning (const char *fmt, ...);
 
+protected:
+  /*----------------------------------------------------------------------*/
+
+  MockPropagator *mock_pointer; // to be able to clean up withouth disconnect
+  
 public:
   Mobical ();
   ~Mobical ();
@@ -975,7 +985,14 @@ struct ConstrainCall : public Call {
 struct ConnectCall : public Call {
   ConnectCall () : Call (CONNECT) {}
   void execute (Solver *&s) {
-    s->connect_external_propagator (new MockPropagator (s));
+    // clean up if there was already one mock propagator
+    MockPropagator *prev_pointer = 0;
+    if (mobical.mock_pointer) prev_pointer = mobical.mock_pointer;
+
+    mobical.mock_pointer = new MockPropagator (s);
+    s->connect_external_propagator (mobical.mock_pointer);
+    
+    if (prev_pointer) delete prev_pointer;
   }
   void print (ostream &o) { o << "connect mock-propagator" << endl; }
   Call *copy () { return new ConnectCall (); }
@@ -1032,8 +1049,10 @@ struct DisconnectCall : public Call {
         static_cast<MockPropagator *> (s->get_propagator ());
     mp->remove_new_observed_var ();
     s->disconnect_external_propagator ();
-    if (mp)
+    if (mp) {      
       delete mp;
+      mobical.mock_pointer = 0;
+    }
   }
   void print (ostream &o) { o << "disconnect mock-propagator" << endl; }
   Call *copy () { return new DisconnectCall (); }
@@ -3594,6 +3613,7 @@ Mobical::Mobical ()
 Mobical::~Mobical () {
   if (shared)
     munmap (shared, sizeof *shared);
+  if (mock_pointer) delete mock_pointer;
 }
 
 void Mobical::catch_signal (int) {
@@ -3821,8 +3841,7 @@ int Mobical::main (int argc, char **argv) {
   terminal.normal ();
   prefix ();
   terminal.magenta (1);
-  fputs ("Copyright (c) 2018-2023 A. Biere, M. Fleury, N. Froleyks, K. "
-         "Fazekas\n",
+  fputs ("Copyright (c) 2018-2023 A. Biere, M. Fleury, N. Froleyks, K. Fazekas\n",
          stderr);
   terminal.normal ();
   empty_line ();

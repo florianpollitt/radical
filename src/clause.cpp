@@ -337,6 +337,8 @@ void Internal::assign_original_unit (uint64_t id, int lit) {
   LOG ("original unit assign %d", lit);
   num_assigned++;
   mark_fixed (lit);
+  if (opts.reimply && !from_propagator)
+    notify_trail.push_back (lit);
   if (level) return;
   if (propagate ())
     return;
