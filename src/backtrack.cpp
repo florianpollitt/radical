@@ -88,6 +88,8 @@ void Internal::backtrack (int new_level) {
     multi_backtrack (new_level);
     return;
   }
+  
+  assert (num_assigned == trail.size ());
 
   const size_t assigned = control[new_level + 1].trail;
 
@@ -166,6 +168,7 @@ void Internal::backtrack (int new_level) {
       tainted_literal = 0;
     }
   }
+  assert (num_assigned == trail.size ());
 }
 
 void Internal::multi_backtrack (int new_level) {
@@ -231,6 +234,8 @@ void Internal::multi_backtrack (int new_level) {
     }
     notify_trail.resize (j);
     notify_assignments ();
+  } else {
+    notify_trail.clear ();
   }
 
   propergated = 0; // Always go back to root-level.

@@ -383,7 +383,7 @@ void Internal::explain_reason (int ilit, Clause *reason, int &open) {
     assert (v.level <= level);
     if (v.reason == external_reason) {
       v.reason = learn_external_reason_clause (-other, 0, true);
-      if (!v.reason) {
+      if (!v.reason && opts.reimply) {
         assert (!v.level);
         trail.push_back (-other);
       }
@@ -769,6 +769,27 @@ void Internal::notify_assignments () {
     assert (external->observed (elit));
     external->propagator->notify_assignment (elit, false);
   }
+#ifndef NDEBUG
+  for (auto idx : vars) {
+    Flags & f = flags (idx);
+    assert (!f.poison);
+  }
+  for (auto lit : notify_trail) {
+    Flags & f = flags (lit);
+    f.poison = true;
+  }
+  for (auto idx : vars) {
+    Flags & f = flags (idx);
+    if (val (idx))
+      assert (f.poison);
+    else
+      assert (!f.poison);
+  }
+  for (auto lit : notify_trail) {
+    Flags & f = flags (lit);
+    f.poison = false;
+  }
+#endif
 }
 
 /*----------------------------------------------------------------------------*/

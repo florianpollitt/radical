@@ -187,6 +187,7 @@ inline void Internal::search_assign (int lit, Clause *reason) {
   v.trail = trail_size (lit_level);
   v.reason = reason;
   assert ((int) num_assigned < max_var);
+  assert (opts.reimply || num_assigned == trail.size ());
   num_assigned++;
   if (!lit_level && !from_external)
     learn_unit_clause (lit); // increases 'stats.fixed'

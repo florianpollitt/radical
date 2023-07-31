@@ -329,16 +329,17 @@ void Internal::assign_original_unit (uint64_t id, int lit) {
   assert (val (lit) > 0);
   assert (val (-lit) < 0);
   trail.push_back (lit);
-  if (external_prop && !external_prop_is_lazy && opts.reimply) {
-    notify_trail.push_back (lit);
+  num_assigned++;
+  if (opts.reimply) {
+    bool use_notify = (external_prop && !external_prop_is_lazy) || !from_propagator;
+    if (use_notify)
+      notify_trail.push_back (lit);
   }
   const unsigned uidx = vlit (lit);
   unit_clauses[uidx] = id;
   LOG ("original unit assign %d", lit);
-  num_assigned++;
+  assert (num_assigned == trail.size () || level);
   mark_fixed (lit);
-  if (opts.reimply && !from_propagator)
-    notify_trail.push_back (lit);
   if (level) return;
   if (propagate ())
     return;
@@ -483,12 +484,8 @@ void Internal::add_new_original_clause (uint64_t id) {
     } else if (size == 1) {
       if (force_no_backtrack) {
         assert (level);
-        /*
-        if (opts.reimply)
-          trail.push_back (clause[0]);
-        */
         const int idx = vidx (clause[0]);
-        assert (vals[idx] >= 0);
+        assert (val (clause[0]) >= 0);
         assert (!flags (idx).eliminated ());
         Var &v = var (idx);
         v.level = 0;

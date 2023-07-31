@@ -372,8 +372,8 @@ void External::remove_observed_var (int elit) {
     int ilit = e2i[eidx]; // internalize (elit);
     internal->remove_observed_var (ilit);
 
-    melt (elit);
     is_observed[eidx] = false;
+    melt (elit);
     LOG ("unmarking %d as externally watched", eidx);
   }
 }
@@ -391,9 +391,9 @@ void External::reset_observed_vars () {
       int ilit = internalize (elit);
       internal->remove_observed_var (ilit);
       LOG ("unmarking %d as externally watched", eidx);
+      is_observed[eidx] = false;
       melt (elit);
     }
-    is_observed[eidx] = false;
   }
   internal->notified = 0;
   LOG ("reset notified counter to 0");
@@ -569,10 +569,13 @@ void External::melt (int elit) {
   unsigned &ref = frozentab[eidx];
   assert (ref > 0);
   if (ref < UINT_MAX) {
-    if (!--ref)
-      LOG ("external variable %d melted once and now completely melted",
-           eidx);
-    else
+    if (!--ref) {
+      if (observed (elit)) {
+        ref++;
+        LOG ("external variable %d is observed, can not be completely molten", eidx);
+      } else 
+         LOG ("external variable %d melted once and now completely melted", eidx);
+    } else
       LOG ("external variable %d melted once but remains frozen %u times",
            eidx, ref);
   } else

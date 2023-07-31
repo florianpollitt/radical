@@ -205,6 +205,7 @@ long Internal::condition_round (long delta) {
       condition_assign (lit);
       v.level = level;
       trail.push_back (lit);
+      // num_assigned++; wrong!
 #if defined(LOGGING) || !defined(NDEBUG)
       additionally_assigned++;
 #endif
