@@ -667,6 +667,7 @@ struct Internal {
   bool is_decision (int ilit);
   void check_watched_literal_invariants ();
   void set_tainted_literal ();
+  void connect_propagator ();
 
   // Use last learned clause to subsume some more.
   //

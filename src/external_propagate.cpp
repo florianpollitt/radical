@@ -794,6 +794,29 @@ void Internal::notify_assignments () {
 
 /*----------------------------------------------------------------------------*/
 //
+// properly initialize notify_trail to the current assignments
+//
+void Internal::connect_propagator () {
+  if (!opts.reimply) return;
+  notify_trail.clear ();
+  for (auto lit : trail) {
+    flags (lit).seen = true;
+    notify_trail.push_back (lit);
+  }
+  for (auto & t : trails) {
+    for (auto lit : t) {
+      if (flags (lit).seen) continue;
+      flags (lit).seen = true;
+      notify_trail.push_back (lit);
+    }
+  }
+  for (auto lit : notify_trail) {
+    flags (lit).seen = false;
+  }
+}
+
+/*----------------------------------------------------------------------------*/
+//
 // Notify the external propagator that a new decision level is started.
 //
 void Internal::notify_decision () {
