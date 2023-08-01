@@ -238,6 +238,7 @@ void Internal::multi_backtrack (int new_level) {
     notify_trail.clear ();
   }
 
+  assert (new_level >= 0);
   if (multitrail_dirty > new_level)
     multitrail_dirty = new_level;
   propergated = 0; // Always go back to root-level.

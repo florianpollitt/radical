@@ -42,30 +42,6 @@ int Internal::trail_size (int l) {
   return (int) trails[l - 1].size ();
 }
 
-// returns the sizes of trails up to (and including) level l
-// TODO: instead of iterating over trails here and disregarding
-// elevated literals, instead clean trails during propagation...
-// then commented code works instead
-//
-int Internal::trails_sizes (int l) {
-  assert (opts.reimply);
-  int res = trail.size ();
-  // TODO: switch code here
-  /*
-  for (int i = 0; i < l; i++) {
-    for (auto & lit : (trails[i])) {
-      if (lit && var (lit).level == i+1)
-        res ++;
-    }
-  }
-  */
-  // not precise...
-  for (int i = 0; i < l; i++) {
-    res += trails[i].size ();
-  }
-  return res;
-}
-
 
 
 // returns the trail that needs to be propagated
@@ -90,30 +66,6 @@ int Internal::next_propagated (int l) {
   return multitrail[l - 1];
 }
 
-// without opts.reimply returns c, else
-// returns a conflict of conflicting_level at most l
-//
-Clause *Internal::propagation_conflict (int l, Clause *c) {
-  if (!opts.reimply)
-    return c;
-  if (c)
-    conflicts.push_back (c);
-  else if (conflicts.empty ())
-    return 0;
-  else
-    c = conflicts.back ();
-  int conf = conflicting_level (c);
-  for (auto cl : conflicts) {
-    int ccl = conflicting_level (cl);
-    if (ccl < conf) {
-      c = cl;
-      conf = ccl;
-    }
-  }
-  if (conf <= l || l < 0)
-    return c;
-  return 0;
-}
 
 // returns the lowest level within some conflicting clause
 //

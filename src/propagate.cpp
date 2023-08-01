@@ -779,6 +779,7 @@ bool Internal::propagate_conflicts () {
       }
 
       int other_level = var (first).level;
+      assert (other_level >= 0);
       if (multitrail_dirty > other_level)
         multitrail_dirty = other_level;
 
@@ -861,9 +862,30 @@ inline int Internal::next_propagation_level (int last) {
       return l + 1;
     }
   }
-  return -1;
+  return level;
 }
 
+// returns a conflict of conflicting_level at most l
+//
+inline Clause *Internal::propagation_conflict (int l, Clause *c) {
+  if (c)
+    conflicts.push_back (c);
+  else if (conflicts.empty ())
+    return 0;
+  else
+    c = conflicts.back ();
+  int conf = conflicting_level (c);
+  for (auto cl : conflicts) {
+    int ccl = conflicting_level (cl);
+    if (ccl < conf) {
+      c = cl;
+      conf = ccl;
+    }
+  }
+  if (conf <= l || l < 0)
+    return c;
+  return 0;
+}
 
 /*------------------------------------------------------------------------*/
 
@@ -880,9 +902,6 @@ bool Internal::propagate_multitrail () {
   assert (!conflict);
   START (propagate);
 
-  // first we have to fix watches in the previous conflicts (and possibly
-  // assign or elevate literals)
-  propagate_conflicts ();
 
 #ifndef NDEBUG
   assert (!multitrail_dirty || (size_t) propagated == trail.size ());
@@ -896,12 +915,14 @@ bool Internal::propagate_multitrail () {
   // we can start propagation at level multitrail_dirty
   int proplevel = multitrail_dirty-1;
 
-  while (true) {
+  while (!conflict) {
     proplevel = next_propagation_level (proplevel);
     conflict = propagation_conflict (proplevel, 0);
     if (proplevel == level)
       break;
     if (proplevel < 0)
+      break;
+    if (conflict)
       break;
     LOG ("PROPAGATION on level %d", proplevel);
     const auto &t = next_trail (proplevel);
@@ -1221,19 +1242,19 @@ bool Internal::propagate_multitrail () {
       }
     }
     set_propagated (proplevel, current);
-    if (!conflict)
-      conflict = propagation_conflict (-1, 0);
 
     if (!searching_lucky_phases) {
       stats.propagations.search += current - before;
       stats.propagations.dirty += current - before;
     }
-    if (conflict)
-      break;
   }
   if (!conflict) {
     multitrail_dirty = level;
     conflict = propagation_conflict (level, 0);
+    assert (!conflict);
+  } else {
+    assert (proplevel >= 0);
+    multitrail_dirty = proplevel;
   }
   // propagating
   if (searching_lucky_phases) {
@@ -1258,21 +1279,52 @@ bool Internal::propagate_multitrail () {
 
       // The trail before the current propagated level was conflict free.
       // TODO: check if it is better to remove this line
-      if (proplevel)
-        no_conflict_until = trails_sizes (proplevel - 1);
-      multitrail_dirty = proplevel;
+      // also: proplevel might be -1 ...
+      no_conflict_until = trails_sizes (proplevel - 1);
     }
   }
+  assert (multitrail_dirty >= 0);
 
   STOP (propagate);
 
   return !conflict;
 }
 
+// for updating no_conflict_until
+//
+inline int Internal::trails_sizes (int l) {
+  assert (opts.reimply);
+  int res = trail.size ();
+  // TODO: switch code here
+  /*
+  for (int i = 0; i < l; i++) {
+    for (auto & lit : (trails[i])) {
+      if (lit && var (lit).level == i+1)
+        res ++;
+    }
+  }
+  */
+  // not precise...
+  for (int i = 0; i < l; i++) {
+    res += trails[i].size ();
+  }
+  return res;
+}
+
+
+
 bool Internal::propagate_clean () {
 
   bool res;
-  if (multitrail_dirty < level || conflicts.size ()) {
+
+  // first we have to fix watches in the previous conflicts (and possibly
+  // assign or elevate literals)
+  if (conflicts.size ()) {
+    res = propagate_conflicts ();
+    assert (res);
+  }
+
+  if (multitrail_dirty < level) {
     res = propagate_multitrail ();
     if (!res)
       return res;
