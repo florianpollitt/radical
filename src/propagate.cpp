@@ -450,7 +450,7 @@ bool Internal::propagate() {
 
       // The trail before the current decision level was conflict free.
       //
-      no_conflict_until = control[level].trail;
+      // no_conflict_until = control[level].trail;
     }
   }
 
