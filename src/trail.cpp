@@ -67,24 +67,6 @@ int Internal::trails_sizes (int l) {
 }
 
 
-// returns the next level that needs to be propagated
-//
-int Internal::next_propagation_level (int last) {
-  if (!opts.reimply) {
-    return -(propagated == trail.size ());
-  }
-  if (last == -1 && propagated < trail.size ())
-    return 0;
-  for (int l = last; l < level; l++) {
-    if (l < 0)
-      continue;
-    assert (l >= 0 && trails.size () >= (size_t) l);
-    if (multitrail[l] < trails[l].size ()) {
-      return l + 1;
-    }
-  }
-  return -1;
-}
 
 // returns the trail that needs to be propagated
 //

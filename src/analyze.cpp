@@ -942,10 +942,10 @@ void Internal::analyze () {
 
       LOG ("forcing %d", forced);
       search_assign_driving (forced, conflict);
-      if (opts.reimply) multitrail_dirty = var (forced).level;
+      if (opts.reimply && multitrail_dirty > var (forced).level)
+        multitrail_dirty = var (forced).level;
 
       conflict = 0;
-      // lrat_chain.clear (); done in search_assign
       STOP (analyze);
       return;
     }
@@ -1044,7 +1044,8 @@ void Internal::analyze () {
 
           LOG ("forcing %d", forced);
           search_assign_driving (forced, conflict);
-          if (opts.reimply) multitrail_dirty = var (forced).level;
+          if (opts.reimply && multitrail_dirty > var (forced).level)
+            multitrail_dirty = var (forced).level;
 
           conflict = 0;
           // Clean up.
@@ -1157,7 +1158,8 @@ void Internal::analyze () {
   //
   if (uip) {
     search_assign_driving (-uip, driving_clause);
-    if (opts.reimply) multitrail_dirty = var (uip).level;
+    if (opts.reimply && multitrail_dirty > var (uip).level)
+      multitrail_dirty = var (uip).level;
   }
   else
     learn_empty_clause ();

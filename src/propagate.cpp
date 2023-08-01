@@ -779,6 +779,8 @@ bool Internal::propagate_conflicts () {
       }
 
       int other_level = var (first).level;
+      if (multitrail_dirty > other_level)
+        multitrail_dirty = other_level;
 
       // now find valid choice for second...
       for (spos = lits; spos < end; spos++)
@@ -845,6 +847,24 @@ bool Internal::propagate_conflicts () {
 }
 
 
+// returns the next level that needs to be propagated
+//
+inline int Internal::next_propagation_level (int last) {
+  assert (opts.reimply);
+  if (last == -1 && propagated < trail.size ())
+    return 0;
+  for (int l = last; l < level; l++) {
+    if (l < 0)
+      continue;
+    assert (l >= 0 && trails.size () >= (size_t) l);
+    if (multitrail[l] < trails[l].size ()) {
+      return l + 1;
+    }
+  }
+  return -1;
+}
+
+
 /*------------------------------------------------------------------------*/
 
 // The 'propagate' function is usually the hot-spot of a CDCL SAT solver.
@@ -858,22 +878,25 @@ bool Internal::propagate_multitrail () {
     require_mode (SEARCH);
   assert (!unsat);
   assert (!conflict);
-  // assert (opts.chrono); ... or external propagator
   START (propagate);
 
   // first we have to fix watches in the previous conflicts (and possibly
   // assign or elevate literals)
-
   propagate_conflicts ();
 
-  int proplevel = -1;
+#ifndef NDEBUG
+  assert (!multitrail_dirty || (size_t) propagated == trail.size ());
+  if (multitrail_dirty) {
+    for (int i = 0; i < multitrail_dirty-1; i++) {
+      assert ((size_t) multitrail[i] == trails[i].size ());
+    }
+  }
+#endif
 
-  // Updating statistics counter in the propagation loops is costly so we
-  // delay until propagation ran to completion.
+  // we can start propagation at level multitrail_dirty
+  int proplevel = multitrail_dirty-1;
 
-  // LOG ("PROPAGATION");
-  while (proplevel < level) {
-    // LOG ("PROPAGATION outer loop");
+  while (true) {
     proplevel = next_propagation_level (proplevel);
     conflict = propagation_conflict (proplevel, 0);
     if (proplevel == level)
@@ -884,7 +907,6 @@ bool Internal::propagate_multitrail () {
     const auto &t = next_trail (proplevel);
     int64_t before = next_propagated (proplevel);
     size_t current = before;
-    const bool ismultitrail = opts.reimply;
     while (!conflict && current != t->size ()) {
       assert (opts.reimply || t == &trail);
       LOG ("propagating level %d from %zd to %zd", proplevel, before,
@@ -907,7 +929,7 @@ bool Internal::propagate_multitrail () {
         const Watch w = *j++ = *i++;
         const signed char b = val (w.blit);
         int l = var (w.blit).level;
-        bool repair = ismultitrail && l > proplevel;
+        bool repair = l > proplevel;
         int multisat = w.blit * (repair) * (b > 0); // multitrailrepair mode
 
         if (b > 0 && !multisat)
@@ -984,7 +1006,7 @@ bool Internal::propagate_multitrail () {
           const int other = lits[0] ^ lits[1] ^ lit;
           const signed char u = val (other); // value of the other watch
           l = var (other).level;
-          repair = ismultitrail && l > proplevel;
+          repair = l > proplevel;
           multisat = other * (repair) * (u > 0); // multitrail mode
 
           if (u > 0 && !multisat)
@@ -1036,7 +1058,7 @@ bool Internal::propagate_multitrail () {
               // proplevel and if var (other).level == proplevel then only
               // if var (other).trail < var (lit).trail there is a high
               // chance that this cannot happen...
-              if (!multisat && ismultitrail) {
+              if (!multisat) {
                 literal_iterator j = lits;
                 for (; j < end; j++) {
                   int literal = *j;
@@ -1049,7 +1071,7 @@ bool Internal::propagate_multitrail () {
                   break;
                 }
               }
-              if (!multisat && ismultitrail) {
+              if (!multisat) {
                 // potentially elevating r...
                 elevate_lit (r, w.clause);
                 multisat = other; // instead we could search for a better
@@ -1070,40 +1092,6 @@ bool Internal::propagate_multitrail () {
                 // Replacement satisfied, so just replace 'blit'.
                 j[-1].blit = r;
 
-              /*
-            if (var (r).level > var (other).level) {
-              assert (false);     // can this even happen???
-              // if other level < r level we might have to change
-              // other watch which is a lot of work... TODO
-              // I think this is necessary though...
-
-              // delete other watch
-              // find literal in clause with level <= level of r
-              // watch literal, r, w.clause
-              remove_watch (watches (other), w.clause);
-              if (var (r).level == proplevel) {
-                watch_literal (lit, r, w.clause);
-              } else {                   // otherwise we search for a new
-            watch int pos, s = 0;          // which is guaranteed to exist
-            because
-                                         // of elevation.
-                for (pos = 2; pos < size; pos++) {
-                  if (var (s = lits[pos]).level == var (other).level)
-                    break;
-                }
-                assert (s);
-                assert (pos < size);
-
-                LOG (w.clause, "unwatch %d in", lit);
-                lits[pos] = lit;
-                lits[0] = other;
-                lits[1] = s;
-                watch_literal (s, other, w.clause);
-
-                j--;  // Drop this watch from the watch list of 'lit'.
-              }
-            }
-              */
             } else if (!v) {
 
               // Found new unassigned replacement literal to be watched.
@@ -1231,12 +1219,8 @@ bool Internal::propagate_multitrail () {
 
         ws.resize (j - ws.begin ());
       }
-      // LOG ("PROPAGATION end loop with current %ld, trail %zd", current,
-      // t->size ());
     }
-    // LOG ("PROPAGATION set propagated");
     set_propagated (proplevel, current);
-    // LOG ("PROPAGATION set conflict");
     if (!conflict)
       conflict = propagation_conflict (-1, 0);
 
@@ -1251,7 +1235,6 @@ bool Internal::propagate_multitrail () {
     multitrail_dirty = level;
     conflict = propagation_conflict (level, 0);
   }
-  // conflicts.clear ();   // TODO: do smth with the conflicts -> i.e.
   // propagating
   if (searching_lucky_phases) {
 
@@ -1280,8 +1263,6 @@ bool Internal::propagate_multitrail () {
       multitrail_dirty = proplevel;
     }
   }
-
-  // LOG ("PROPAGATION stop");
 
   STOP (propagate);
 

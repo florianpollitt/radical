@@ -613,7 +613,8 @@ void Internal::handle_external_clause (Clause *res) {
   else if (val (pos1) < 0 && opts.reimply) {
     assert (val (pos0) > 0);
     elevate_lit_external (pos0, res);
-    multitrail_dirty = var (pos0).level;
+    if (var (pos0).level < multitrail_dirty)
+      multitrail_dirty = var (pos0).level;
   }
 }
 
