@@ -1291,14 +1291,14 @@ bool Internal::propagate_multitrail () {
 bool Internal::propagate_clean () {
 
   bool res;
-  if (multitrail_dirty < level) {
+  if (multitrail_dirty < level || conflicts.size ()) {
     res = propagate_multitrail ();
     if (!res)
       return res;
   }
 
 #ifndef NDEBUG
-  assert ((size_t) propagated == trail.size ());
+  assert (!level || (size_t) propagated == trail.size ());
   if (level) {
     for (int i = 0; i < level-1; i++) {
       assert ((size_t) multitrail[i] == trails[i].size ());

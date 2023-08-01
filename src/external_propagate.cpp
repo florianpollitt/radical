@@ -146,6 +146,8 @@ bool Internal::external_propagate () {
         // variable is not assigned, it can be propagated
         search_assign_external (ilit);
         stats.ext_prop.eprop_prop++;
+        if (opts.reimply && var (ilit).level < multitrail_dirty)
+          multitrail_dirty = var (ilit).level;
 
         if (unsat || conflict)
           break;
@@ -493,10 +495,12 @@ void Internal::explain_external_propagations () {
           if (!real_level) {
             v.trail = trail.size ();
             trail.push_back (lit);
-          }
-          else {
+            multitrail_dirty = 0;
+          } else {
             v.trail = trails[real_level - 1].size ();
             trails[real_level - 1].push_back (lit);
+            if (real_level < multitrail_dirty)
+              multitrail_dirty = real_level;
           }
         }
       }
@@ -588,7 +592,7 @@ void Internal::handle_external_clause (Clause *res) {
         analyze (); // TODO: is it good to do conflict analysis?
     } else {
       search_assign_driving (pos0, res);
-      if (opts.reimply)
+      if (opts.reimply && var (pos0).level < multitrail_dirty)
         multitrail_dirty = var (pos0).level;
     }
     if (from_propagator)
@@ -600,7 +604,7 @@ void Internal::handle_external_clause (Clause *res) {
       backtrack (l1);
     }
     search_assign_driving (pos0, res);
-    if (opts.reimply)
+    if (opts.reimply && var (pos0).level < multitrail_dirty)
       multitrail_dirty = var (pos0).level;
     if (from_propagator)
       stats.ext_prop.elearn_conf++;
