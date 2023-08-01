@@ -89,7 +89,6 @@ extern "C" {
 #include "stats.hpp"
 #include "terminal.hpp"
 #include "tracer.hpp"
-#include "trail.hpp"
 #include "util.hpp"
 #include "var.hpp"
 #include "version.hpp"
@@ -235,7 +234,7 @@ struct Internal {
   vector<int> shrinkable;     // removable or poison in 'shrink'
   Reap reap;                  // radix heap for shrink
 
-  bool multitrail_dirty;
+  int multitrail_dirty;
   vector<size_t> multitrail;  // "propagated" for each level
   vector<vector<int>> trails; // all assignments on all levels
   size_t num_assigned;        // check for satisfied

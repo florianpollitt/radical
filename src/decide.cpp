@@ -121,7 +121,7 @@ bool Internal::better_decision (int lit, int other) {
 
 int Internal::decide () {
   assert (!satisfied ());
-  assert (!multitrail_dirty);
+  assert (!opts.reimply || multitrail_dirty == level);
   START (decide);
   int res = 0;
   if ((size_t) level < assumptions.size ()) {

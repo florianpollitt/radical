@@ -249,7 +249,8 @@ void Internal::assign_unit (int lit) {
 
 void Internal::search_assume_decision (int lit) {
   require_mode (SEARCH);
-  assert (!multitrail_dirty || propagated == trail.size ());
+  assert (opts.reimply || propagated == trail.size ());
+  assert (!opts.reimply || multitrail_dirty == level);
   new_trail_level (lit);
   notify_decision ();
   LOG ("search decide %d", lit);
@@ -1247,7 +1248,7 @@ bool Internal::propagate_multitrail () {
       break;
   }
   if (!conflict) {
-    multitrail_dirty = false;
+    multitrail_dirty = level;
     conflict = propagation_conflict (level, 0);
   }
   // conflicts.clear ();   // TODO: do smth with the conflicts -> i.e.
@@ -1276,6 +1277,7 @@ bool Internal::propagate_multitrail () {
       // TODO: check if it is better to remove this line
       if (proplevel)
         no_conflict_until = trails_sizes (proplevel - 1);
+      multitrail_dirty = proplevel;
     }
   }
 
@@ -1289,13 +1291,14 @@ bool Internal::propagate_multitrail () {
 bool Internal::propagate_clean () {
 
   bool res;
-  if (multitrail_dirty) {
+  if (multitrail_dirty < level) {
     res = propagate_multitrail ();
     if (!res)
       return res;
   }
 
 #ifndef NDEBUG
+  assert ((size_t) propagated == trail.size ());
   if (level) {
     for (int i = 0; i < level-1; i++) {
       assert ((size_t) multitrail[i] == trails[i].size ());
@@ -1303,7 +1306,7 @@ bool Internal::propagate_clean () {
   }
 #endif
 
-  assert (opts.reimply && !multitrail_dirty && conflicts.empty ());
+  assert (opts.reimply && multitrail_dirty == level && conflicts.empty ());
 
   if (level)
     require_mode (SEARCH);

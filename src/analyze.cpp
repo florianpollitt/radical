@@ -678,9 +678,6 @@ inline int Internal::determine_actual_backtrack_level (int jump) {
     LOG ("non-chronological back-jumping to level %d", res);
   }
 
-  if (opts.reimply && res != jump)
-    multitrail_dirty = true;
-
   return res;
 }
 
@@ -945,6 +942,7 @@ void Internal::analyze () {
 
       LOG ("forcing %d", forced);
       search_assign_driving (forced, conflict);
+      if (opts.reimply) multitrail_dirty = var (forced).level;
 
       conflict = 0;
       // lrat_chain.clear (); done in search_assign
@@ -1043,10 +1041,10 @@ void Internal::analyze () {
               determine_actual_backtrack_level (conflict_level - 1);
           UPDATE_AVERAGE (averages.current.level, new_level);
           backtrack (new_level);
-          if (opts.reimply) multitrail_dirty = true;
 
           LOG ("forcing %d", forced);
           search_assign_driving (forced, conflict);
+          if (opts.reimply) multitrail_dirty = var (forced).level;
 
           conflict = 0;
           // Clean up.
@@ -1157,8 +1155,10 @@ void Internal::analyze () {
   // or we haven't actually learned a clause in new_driving_clause
   // then lrat_chain is still valid and we will learn a unit or empty clause
   //
-  if (uip)
+  if (uip) {
     search_assign_driving (-uip, driving_clause);
+    if (opts.reimply) multitrail_dirty = var (uip).level;
+  }
   else
     learn_empty_clause ();
 

@@ -21,7 +21,7 @@ Internal::Internal ()
       propagated (0), propagated2 (0), propergated (0), best_assigned (0),
       target_assigned (0),
       no_conflict_until (0), unsat_constraint (false), marked_failed (true),
-      multitrail_dirty (false), num_assigned (0),
+      multitrail_dirty (0), num_assigned (0),
       proof (0), checker (0), tracer (0), lratchecker (0), lratbuilder (0),
       opts (this),
 #ifndef QUIET

@@ -9,7 +9,8 @@ void Internal::new_trail_level (int lit) {
   control.push_back (Level (lit, trail.size ()));
   if (!opts.reimply)
     return;
-  assert (opts.reimply);
+  assert (multitrail_dirty == level - 1);
+  multitrail_dirty++;
   multitrail.push_back (0);
   control.back ().trail = notify_trail.size ();
   size_t reserving = 0;

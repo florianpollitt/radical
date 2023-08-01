@@ -469,8 +469,6 @@ void Internal::add_new_original_clause (uint64_t id) {
     }
     external->eclause.clear ();
     lrat_chain.clear ();
-    if (opts.reimply && level)
-      multitrail_dirty = true;
     if (!size) {
       if (from_propagator)
         stats.ext_prop.elearn_conf++;
@@ -493,12 +491,14 @@ void Internal::add_new_original_clause (uint64_t id) {
         const unsigned uidx = vlit (clause[0]);
         unit_clauses[uidx] = new_id;
         mark_fixed (clause[0]);
+        multitrail_dirty = 0;
       } else {
         const int lit = clause[0];
         assert (!val (lit) || var (lit).level);
         if (val (lit) < 0) backtrack (var (lit).level - 1);
         assert (val (lit) >= 0);
         handle_external_clause (0);
+        multitrail_dirty = 0;
         if (val (lit)) {
           assert (opts.reimply);
           elevate_original_unit (new_id, lit);

@@ -163,8 +163,9 @@ bool Internal::external_propagate () {
 #ifndef LOGGING
         LOG (res, "reason clause of external propagation of %d:", elit);
 #endif
+        (void) res;
         bool trail_changed =
-            (num_assigned != assigned || level != level_before || multitrail_dirty);
+            (num_assigned != assigned || level != level_before || multitrail_dirty < level);
 
         if (unsat || conflict)
           break;
@@ -209,7 +210,7 @@ bool Internal::external_propagate () {
 
         add_external_clause (0);
         bool trail_changed =
-            (num_assigned != assigned || level != level_before || multitrail_dirty);
+            (num_assigned != assigned || level != level_before || multitrail_dirty < level);
 
         if (unsat || conflict)
           break;
@@ -548,10 +549,9 @@ Clause *Internal::learn_external_reason_clause (int ilit,
 // analysis
 //
 void Internal::handle_external_clause (Clause *res) {
-  // at level 0 we have to do nothing...
   if (from_propagator)
     stats.ext_prop.elearned++;
-
+  // at level 0 we have to do nothing...
   if (!level)
     return;
   if (!res) {
@@ -588,6 +588,8 @@ void Internal::handle_external_clause (Clause *res) {
         analyze (); // TODO: is it good to do conflict analysis?
     } else {
       search_assign_driving (pos0, res);
+      if (opts.reimply)
+        multitrail_dirty = var (pos0).level;
     }
     if (from_propagator)
       stats.ext_prop.elearn_conf++;
@@ -598,6 +600,8 @@ void Internal::handle_external_clause (Clause *res) {
       backtrack (l1);
     }
     search_assign_driving (pos0, res);
+    if (opts.reimply)
+      multitrail_dirty = var (pos0).level;
     if (from_propagator)
       stats.ext_prop.elearn_conf++;
     return;
@@ -605,6 +609,7 @@ void Internal::handle_external_clause (Clause *res) {
   else if (val (pos1) < 0 && opts.reimply) {
     assert (val (pos0) > 0);
     elevate_lit_external (pos0, res);
+    multitrail_dirty = var (pos0).level;
   }
 }
 
@@ -689,7 +694,7 @@ bool Internal::external_check_solution () {
       size_t assigned = num_assigned;
       add_external_clause (0);
       bool trail_changed =
-          (num_assigned != assigned || level != level_before || multitrail_dirty);
+          (num_assigned != assigned || level != level_before || multitrail_dirty < level);
       added_new_clauses = true;
       //
       // There are many possible scenarios here:
