@@ -808,6 +808,8 @@ void Internal::notify_assignments () {
 //
 void Internal::connect_propagator () {
   if (!opts.reimply) return;
+  if (level)
+    backtrack ();
   notify_trail.clear ();
   for (auto lit : trail) {
     flags (lit).seen = true;

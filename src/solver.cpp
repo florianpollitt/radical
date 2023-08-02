@@ -817,11 +817,6 @@ void Solver::connect_external_propagator (ExternalPropagator *propagator) {
   LOG_API_CALL_BEGIN ("connect_external_propagator");
   REQUIRE_VALID_STATE ();
   REQUIRE (propagator, "can not connect zero propagator");
-  /*
-  REQUIRE (!internal->opts.lrat,
-           "lrat is currently not compatible with external propagation");
-  // TODO: require opts.lrat = false
-  */
 
 #ifdef LOGGING
   if (external->propagator)
@@ -833,9 +828,9 @@ void Solver::connect_external_propagator (ExternalPropagator *propagator) {
     disconnect_external_propagator ();
 
   external->propagator = propagator;
+  internal->connect_propagator ();
   internal->external_prop = true;
   internal->external_prop_is_lazy = propagator->is_lazy;
-  internal->connect_propagator ();
   LOG_API_CALL_END ("connect_external_propagator");
 }
 

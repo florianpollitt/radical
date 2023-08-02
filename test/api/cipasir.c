@@ -72,7 +72,6 @@ int main (void) {
   for (int i = 0; i < 2; i++) {
     learners[i].solver = solvers[i] = ipasir_init ();
     ipasir_set_learn (solvers[i], learners + !i, 3, learn);
-    ccadical_set_option (solvers[i], "ilb", 0);
     formula (solvers[i]);
   }
   unsigned round = 0;

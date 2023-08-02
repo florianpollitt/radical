@@ -668,6 +668,10 @@ int Internal::local_search () {
 
 /*------------------------------------------------------------------------*/
 
+// if preprocess_only is false and opts.ilb is true we do not preprocess
+// such that we do not have to backtrack to level 0.
+// TODO: check restore_clauses works on higher level
+//
 int Internal::solve (bool preprocess_only) {
   assert (clause.empty ());
   START (solve);
@@ -677,6 +681,8 @@ int Internal::solve (bool preprocess_only) {
     LOG ("internal solving in full mode");
   init_report_limits ();
   int res = already_solved ();
+  if (!res && preprocess_only && level)
+    backtrack ();
   if (!res)
     res = restore_clauses ();
   if (!res) {
@@ -684,12 +690,12 @@ int Internal::solve (bool preprocess_only) {
     if (!preprocess_only)
       init_search_limits ();
   }
-  if (!res)
+  if (!res && !level)
     res = preprocess ();
   if (!preprocess_only) {
-    if (!res)
+    if (!res && !level)
       res = local_search ();
-    if (!res)
+    if (!res && !level)
       res = lucky_phases ();
     if (!res || (res == 10 && external_prop)) {
       if (res == 10 && external_prop && level)
@@ -710,9 +716,9 @@ int Internal::already_solved () {
     LOG ("already inconsistent");
     res = 20;
   } else {
-    if (level)
+    if (level && !opts.ilb)
       backtrack ();
-    if (!propagate ()) {
+    if (!opts.ilb && !propagate ()) {
       LOG ("root level propagation produces conflict");
       learn_empty_clause ();
       res = 20;
