@@ -96,10 +96,13 @@ bool Internal::satisfied () {
     return false;
   if (opts.reimply && multitrail_dirty < level)
     return false;
+  if (opts.reimply && level && 
+     (size_t) multitrail[level-1] < trails[level-1].size ())
+    return false;
 #ifndef NDEBUG
   if (opts.reimply)
     for (int i = 0; i < level; i++)
-      assert ((size_t) multitrail[i] < trails[i].size ());
+      assert ((size_t) multitrail[i] == trails[i].size ());
 #endif
 
   size_t assigned = num_assigned;
