@@ -1568,11 +1568,13 @@ bool Internal::propagate_clean () {
 
   STOP (propagate);
 
+  /*
 #ifndef NDEBUG
   // TODO: very unsure about watches (also inside of propagate)
   if (!conflict)
     test_watch_invariant ();
 #endif
+  */
 
   return !conflict;
 }

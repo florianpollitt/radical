@@ -92,16 +92,15 @@ bool Internal::satisfied () {
   if (num_assigned < (size_t) max_var)
     return false;
   assert (num_assigned == (size_t) max_var);
-
   if (propagated < trail.size ())
     return false;
-  if (opts.reimply) {
-    for (int i = 0; i < level; i++) {
-      if ((size_t) multitrail[i] < trails[i].size ()) {
-        return false;
-      }
-    }
-  }
+  if (opts.reimply && multitrail_dirty < level)
+    return false;
+#ifndef NDEBUG
+  if (opts.reimply)
+    for (int i = 0; i < level; i++)
+      assert ((size_t) multitrail[i] < trails[i].size ());
+#endif
 
   size_t assigned = num_assigned;
   return (assigned == (size_t) max_var);
