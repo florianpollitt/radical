@@ -902,8 +902,18 @@ void Internal::analyze () {
 
   /*----------------------------------------------------------------------*/
 
-  if (external_prop && !external_prop_is_lazy)
+  if (external_prop && !external_prop_is_lazy) {
+    int change = multitrail_dirty;
     explain_external_propagations ();
+    while (opts.reimply && multitrail_dirty < change) {
+      Clause * prev = conflict;
+      conflict = 0;
+      propagate_multitrail ();
+      change = multitrail_dirty;
+      if (!conflict) conflict = prev;
+      else explain_external_propagations ();
+    }
+  }
 
   if (opts.chrono || external_prop || opts.otfs) {
 
