@@ -439,7 +439,7 @@ long Internal::condition_round (long delta) {
     if (fixed (lit))
       condition_unassign (lit);
 
-  // with opts multitrail we might have more trails (which do not contain
+  // with reimply we might have more trails (which do not contain
   // root assigned literals but might contain fixed literals anyways)
   int l = 0;
   for (auto &t : trails) {

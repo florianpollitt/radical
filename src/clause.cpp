@@ -383,7 +383,7 @@ void Internal::elevate_original_unit (uint64_t id, int lit) {
 // made sure that newest_clause points to the new clause upon return.
 //
 void Internal::add_new_original_clause (uint64_t id) {
-  // TODO: ilb not working! && 
+
   if (!from_propagator && level && !opts.ilb) {
     backtrack ();
   } else if (tainted_literal) {

@@ -33,8 +33,8 @@ extern "C" {
 #include <algorithm>
 #include <queue>
 #include <string>
-#include <unordered_set>
 #include <vector>
+#include <unordered_set>
 
 /*------------------------------------------------------------------------*/
 
@@ -161,16 +161,17 @@ struct Internal {
   bool searching_lucky_phases; // during 'lucky_phases'
   bool stable;                 // true during stabilization phase
   bool reported;               // reported in this solving call
-  bool external_prop;          // true if an external propagator is connected
-  bool external_prop_is_lazy;  // true if the external propagator is lazy
-  char rephased;               // last type of resetting phases
-  Reluctant reluctant;         // restart counter in stable mode
-  size_t vsize;                // actually allocated variable data size
-  int max_var;                 // internal maximum variable index
-  uint64_t clause_id;          // last used id for clauses
-  uint64_t original_id;        // ids for original clauses to produce lrat
-  uint64_t reserved_ids;       // number of reserved ids for original clauses
-  uint64_t conflict_id;        // store conflict id for finalize (frat)
+  bool external_prop;         // true if an external propagator is connected
+  bool did_external_prop;     // true if ext. propagation happened
+  bool external_prop_is_lazy; // true if the external propagator is lazy
+  char rephased;              // last type of resetting phases
+  Reluctant reluctant;        // restart counter in stable mode
+  size_t vsize;               // actually allocated variable data size
+  int max_var;                // internal maximum variable index
+  uint64_t clause_id;         // last used id for clauses
+  uint64_t original_id;       // ids for original clauses to produce lrat
+  uint64_t reserved_ids;      // number of reserved ids for original clauses
+  uint64_t conflict_id;       // store conflict id for finalize (frat)
   vector<uint64_t> unit_clauses; // keep track of unit_clauses (lrat/frat)
   vector<uint64_t> lrat_chain;   // create lrat in solver: option lratdirect
   vector<uint64_t> mini_chain;   // used to create lrat in minimize
@@ -210,7 +211,7 @@ struct Internal {
   bool from_propagator;         // differentiate new clauses...
   int tainted_literal;          // used for ILB
   vector<Clause *> fix_later;   // for reimply + external propagator
-  vector<int> notify_trail;      // for reimply + external propagator
+  vector<int> notify_trail;     // for reimply + external propagator
   size_t notified;              // next trail position to notify external prop
   Clause *probe_reason;         // set during probing
   size_t propagated;            // next trail position to propagate
@@ -617,6 +618,7 @@ struct Internal {
   //
   void learn_empty_clause ();
   void learn_unit_clause (int lit);
+  void learn_external_propagated_unit_clause (int lit);
   void bump_variable (int lit);
   void bump_variables ();
   int recompute_glue (Clause *);
@@ -1291,9 +1293,11 @@ struct Internal {
     if (ref < UINT_MAX) {
       if (!--ref) {
         if (relevanttab[idx]) {
-          LOG ("variable %d is observed, can not be completely molten", idx);
+          LOG ("variable %d is observed, can not be completely molten",
+               idx);
           ref++;
-        } else LOG ("variable %d completely molten", idx);
+        } else
+          LOG ("variable %d completely molten", idx);
       } else
         LOG ("variable %d melted once but remains frozen %u times", lit,
              ref);

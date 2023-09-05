@@ -425,6 +425,7 @@ void Internal::explain_external_propagations () {
   Clause *reason = conflict;
   std::vector<int> seen_lits;
   int open = 0;          // Seen but not explained literal
+
   explain_reason (0, reason, open); // marks conflict clause lits as seen
   if (!opts.reimply) {
   
